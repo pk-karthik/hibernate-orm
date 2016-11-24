@@ -7,6 +7,7 @@
 package org.hibernate.boot.spi;
 
 import java.util.Map;
+import java.util.TimeZone;
 
 import org.hibernate.ConnectionReleaseMode;
 import org.hibernate.CustomEntityDirtinessStrategy;
@@ -56,6 +57,11 @@ public class AbstractDelegatingSessionFactoryOptions implements SessionFactoryOp
 	@Override
 	public boolean isJtaTransactionAccessEnabled() {
 		return delegate.isJtaTransactionAccessEnabled();
+	}
+
+	@Override
+	public boolean isAllowRefreshDetachedEntity() {
+		return delegate.isAllowRefreshDetachedEntity();
 	}
 
 	@Override
@@ -214,6 +220,21 @@ public class AbstractDelegatingSessionFactoryOptions implements SessionFactoryOp
 	}
 
 	@Override
+	public boolean isCollectionJoinSubqueryRewriteEnabled() {
+		return delegate.isCollectionJoinSubqueryRewriteEnabled();
+	}
+
+	@Override
+	public boolean isAllowOutOfTransactionUpdateOperations() {
+		return delegate.isAllowOutOfTransactionUpdateOperations();
+	}
+
+	@Override
+	public boolean isReleaseResourcesOnCloseEnabled() {
+		return delegate.isReleaseResourcesOnCloseEnabled();
+	}
+
+	@Override
 	public boolean isSecondLevelCacheEnabled() {
 		return delegate.isSecondLevelCacheEnabled();
 	}
@@ -337,5 +358,10 @@ public class AbstractDelegatingSessionFactoryOptions implements SessionFactoryOp
 	@Override
 	public Class<? extends Interceptor> getStatelessInterceptorImplementor() {
 		return delegate.getStatelessInterceptorImplementor();
+	}
+
+	@Override
+	public TimeZone getJdbcTimeZone() {
+		return delegate.getJdbcTimeZone();
 	}
 }

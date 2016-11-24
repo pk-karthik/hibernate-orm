@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.UUID;
 import javax.persistence.EntityGraph;
 import javax.persistence.EntityManagerFactory;
@@ -1163,7 +1164,12 @@ public class SessionDelegatorBaseImpl implements SessionImplementor {
 	}
 
 	@Override
-	public void setJdbcBatchSize(int jdbcBatchSize) {
+	public void setJdbcBatchSize(Integer jdbcBatchSize) {
 		delegate.setJdbcBatchSize( jdbcBatchSize );
+	}
+
+	@Override
+	public TimeZone getJdbcTimeZone() {
+		return delegate.getJdbcTimeZone();
 	}
 }

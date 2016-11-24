@@ -218,7 +218,6 @@ public abstract class AbstractPersistentCollection implements Serializable, Pers
 			}
 		}
 
-
 		SharedSessionContractImplementor originalSession = null;
 		boolean isJTA = false;
 
@@ -227,9 +226,8 @@ public abstract class AbstractPersistentCollection implements Serializable, Pers
 			originalSession = session;
 			session = tempSession;
 
-
 			isJTA = session.getTransactionCoordinator().getTransactionCoordinatorBuilder().isJta();
-			
+
 			if ( !isJTA ) {
 				// Explicitly handle the transactions only if we're not in
 				// a JTA environment.  A lazy loading temporary session can

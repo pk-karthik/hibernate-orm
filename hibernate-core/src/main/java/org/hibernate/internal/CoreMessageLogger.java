@@ -299,7 +299,7 @@ public interface CoreMessageLogger extends BasicLogger {
 	void factoryUnboundFromName(String name);
 
 	@LogMessage(level = ERROR)
-	@Message(value = "an assertion failure occured" + " (this may indicate a bug in Hibernate, but is more likely due"
+	@Message(value = "an assertion failure occurred" + " (this may indicate a bug in Hibernate, but is more likely due"
 			+ " to unsafe use of the session): %s", id = 99)
 	void failed(Throwable throwable);
 
@@ -467,8 +467,8 @@ public interface CoreMessageLogger extends BasicLogger {
 			String old,
 			String name);
 
-	@Message(value = "Javassist Enhancement failed: %s", id = 142)
-	String javassistEnhancementFailed(String entityName);
+	@Message(value = "Bytecode enhancement failed: %s", id = 142)
+	String bytecodeEnhancementFailed(String entityName);
 
 	@LogMessage(level = WARN)
 	@Message(value = "%s = false breaks the EJB3 specification", id = 144)
@@ -1066,8 +1066,8 @@ public interface CoreMessageLogger extends BasicLogger {
 	void unableToDropTemporaryIdTable(String message);
 
 	@LogMessage(level = ERROR)
-	@Message(value = "Exception executing batch [%s]", id = 315)
-	void unableToExecuteBatch(String message);
+	@Message(value = "Exception executing batch [%s], SQL: %s", id = 315)
+	void unableToExecuteBatch(Exception e, String sql );
 
 	@LogMessage(level = WARN)
 	@Message(value = "Error executing resolver [%s] : %s", id = 316)
@@ -1327,8 +1327,8 @@ public interface CoreMessageLogger extends BasicLogger {
 	void unexpectedRowCounts();
 
 	@LogMessage(level = WARN)
-	@Message(value = "unrecognized bytecode provider [%s], using javassist by default", id = 382)
-	void unknownBytecodeProvider(String providerName);
+	@Message(value = "unrecognized bytecode provider [%s], using [%s] by default", id = 382)
+	void unknownBytecodeProvider(String providerName, String defaultProvider);
 
 	@LogMessage(level = WARN)
 	@Message(value = "Unknown Ingres major version [%s]; using Ingres 9.2 dialect", id = 383)
@@ -1339,8 +1339,8 @@ public interface CoreMessageLogger extends BasicLogger {
 	void unknownOracleVersion(int databaseMajorVersion);
 
 	@LogMessage(level = WARN)
-	@Message(value = "Unknown Microsoft SQL Server major version [%s] using SQL Server 2000 dialect", id = 385)
-	void unknownSqlServerVersion(int databaseMajorVersion);
+	@Message(value = "Unknown Microsoft SQL Server major version [%s] using [%s] dialect", id = 385)
+	void unknownSqlServerVersion(int databaseMajorVersion, Class<? extends Dialect> dialectClass);
 
 	@LogMessage(level = WARN)
 	@Message(value = "ResultSet had no statement associated with it, but was not yet registered", id = 386)
@@ -1744,4 +1744,15 @@ public interface CoreMessageLogger extends BasicLogger {
 	@LogMessage(level = ERROR)
 	@Message(value = "Unsuccessful: %s", id = 478)
 	void unsuccessfulSchemaManagementCommand(String command);
+
+	@Message(
+			value = "Collection [%s] was not processed by flush()."
+			+ " This is likely due to unsafe use of the session (e.g. used in multiple threads concurrently, updates during entity lifecycle hooks).",
+			id = 479
+	)
+	String collectionNotProcessedByFlush(String role);
+
+	@LogMessage(level = WARN)
+	@Message(value = "A ManagedEntity was associated with a stale PersistenceContext. A ManagedEntity may only be associated with one PersistenceContext at a time; %s", id = 480)
+	void stalePersistenceContextInEntityEntry(String msg);
 }

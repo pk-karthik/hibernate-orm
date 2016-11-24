@@ -687,6 +687,16 @@ public interface SessionFactoryBuilder {
 	 */
 	SessionFactoryBuilder applySqlFunction(String registrationName, SQLFunction sqlFunction);
 
+	SessionFactoryBuilder allowOutOfTransactionUpdateOperations(boolean allow);
+
+	/**
+	 * Should resources held by {@link javax.persistence.EntityManager} instance be released immediately on close?
+	 * <p/>
+	 * The other option is to release them as part of an afterQuery-transaction callback.
+	 *
+	 */
+	SessionFactoryBuilder enableReleaseResourcesOnCloseEnabled(boolean enable);
+
 	/**
 	 * Allows unwrapping this builder as another, more specific type.
 	 *

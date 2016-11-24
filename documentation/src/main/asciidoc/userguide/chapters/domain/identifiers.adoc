@@ -43,6 +43,9 @@ According to JPA only the following types should be used as identifier attribute
 
 Any types used for identifier attributes beyond this list will not be portable.
 
+[[identifiers-simple-assigned]]
+===== Assigned identifiers
+
 Values for simple identifiers can be assigned, as we have seen in the examples above.
 The expectation for assigned identifier values is that the application assigns (sets them on the entity attribute) prior to calling save/persist.
 
@@ -53,6 +56,9 @@ The expectation for assigned identifier values is that the application assigns (
 include::{sourcedir}/id/SimpleAssigned.java[]
 ----
 ====
+
+[[identifiers-simple-generated]]
+===== Generated identifiers
 
 Values for simple identifiers can be generated. To denote that an identifier attribute is generated, it is annotated with `javax.persistence.GeneratedValue`
 
@@ -93,7 +99,7 @@ The attributes making up the composition can be either basic, composite, ManyToO
 Note especially that collections and one-to-ones are never appropriate.
 
 [[identifiers-composite-aggregated]]
-==== Composite identifiers - aggregated (EmbeddedId)
+==== Composite identifiers with `@EmbeddedId`
 
 Modeling a composite identifier using an EmbeddedId simply means defining an embeddable to be a composition for the one or more attributes making up the identifier,
 and then exposing an attribute of that embeddable type on the entity.
@@ -124,7 +130,7 @@ In JPA terms one would use "derived identifiers"; for details, see <<identifiers
 ====
 
 [[identifiers-composite-nonaggregated]]
-==== Composite identifiers - non-aggregated (IdClass)
+==== Composite identifiers with `@IdClass`
 
 Modeling a composite identifier using an IdClass differs from using an EmbeddedId in that the entity defines each individual attribute making up the composition.
 The IdClass simply acts as a "shadow".
@@ -165,7 +171,7 @@ Use of this feature may or may not be portable from a JPA perspective.
 ====
 
 [[identifiers-composite-associations]]
-==== Composite identifiers - associations
+==== Composite identifiers with associations
 
 Hibernate allows defining a composite identifier out of entity associations.
 In the following example, the `PersonAddress` entity identifier is formed of two `@ManyToOne` associations.
@@ -221,17 +227,21 @@ The rest of the discussion here assumes this setting is enabled (true).
 ==== Interpreting AUTO
 
 How a persistence provider interprets the AUTO generation type is left up to the provider.
-Hibernate interprets it in the following order:
 
-* If the given name matches the name for a `javax.persistence.SequenceGenerator` annotation then <<identifiers-generators-sequence>>.
-* If the given name matches the name for a `javax.persistence.TableGenerator` annotation then <<identifiers-generators-table>>.
-* If the given name matches the name for a `org.hibernate.annotations.GenericGenerator` annotation then <<identifiers-generators-generic>>.
+The default behavior is to look at the java type of the identifier attribute.
 
-The fallback is to consult with the pluggable `org.hibernate.boot.model.IdGeneratorStrategyInterpreter` contract, which is covered in detail in the Hibernate Integrations Guide.
-The default behavior is to look at the java type of the identifier attribute:
+If the identifier type is UUID, Hibernate is going to use an <<identifiers-generators-uuid, UUID identifier>>.
 
-* for UUID <<identifiers-generators-uuid>>
-* Otherwise, <<identifiers-generators-sequence>>
+If the identifier type is numerical (e.g. `Long`, `Integer`), then Hibernate is going to use the `IdGeneratorStrategyInterpreter` to resolve the identifier generator strategy.
+The `IdGeneratorStrategyInterpreter` has two implementations:
+
+`FallbackInterpreter`::
+	This is the default strategy since Hibernate 5.0. For older versions, this strategy is enabled through the <<appendices/Configurations.adoc#configurations-mapping,`hibernate.id.new_generator_mappings`>> configuration property .
+	When using this strategy, `AUTO` always resolves to `SequenceStyleGenerator`.
+	If the underlying database supports sequences, then a SEQUENCE generator is used. Otherwise, a TABLE generator is going to be used instead.
+`LegacyFallbackInterpreter`::
+	This is a legacy mechanism that was used by Hibernate prior to version 5.0 or when the <<appendices/Configurations.adoc#configurations-mapping,`hibernate.id.new_generator_mappings`>> configuration property is false.
+	The legacy strategy maps `AUTO` to the `native` generator strategy which uses the https://docs.jboss.org/hibernate/orm/{majorMinorVersion}/javadocs/org/hibernate/dialect/Dialect.html#getNativeIdentifierGeneratorStrategy--[Dialect#getNativeIdentifierGeneratorStrategy] to resolve the actual identifier generator (e.g. `identity` or `sequence`).
 
 [[identifiers-generators-sequence]]
 ==== Using sequences
@@ -397,6 +407,7 @@ Applications can also implement and use their own optimizer strategies, as defin
 
 JPA 2.0 added support for derived identifiers which allow an entity to borrow the identifier from a many-to-one or one-to-one association.
 
+[[identifiers-derived-mapsid]]
 .Derived identifier with `@MapsId`
 ====
 [source,java]
@@ -411,6 +422,7 @@ The `@MapsId` annotation can also reference columns from an `@EmbeddedId` identi
 
 The previous example can also be mapped using `@PrimaryKeyJoinColumn`.
 
+[[identifiers-derived-primarykeyjoincolumn]]
 .Derived identifier `@PrimaryKeyJoinColumn`
 ====
 [source,java]

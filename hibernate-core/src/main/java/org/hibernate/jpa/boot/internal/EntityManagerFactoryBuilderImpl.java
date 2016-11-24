@@ -51,6 +51,8 @@ import org.hibernate.boot.spi.MetadataImplementor;
 import org.hibernate.boot.spi.SessionFactoryBuilderImplementor;
 import org.hibernate.bytecode.enhance.spi.DefaultEnhancementContext;
 import org.hibernate.bytecode.enhance.spi.EnhancementContext;
+import org.hibernate.bytecode.enhance.spi.UnloadedClass;
+import org.hibernate.bytecode.enhance.spi.UnloadedField;
 import org.hibernate.cfg.AttributeConverterDefinition;
 import org.hibernate.cfg.Environment;
 import org.hibernate.cfg.beanvalidation.BeanValidationIntegrator;
@@ -103,7 +105,6 @@ import static org.hibernate.internal.HEMLogging.messageLogger;
 import static org.hibernate.jpa.AvailableSettings.CFG_FILE;
 import static org.hibernate.jpa.AvailableSettings.CLASS_CACHE_PREFIX;
 import static org.hibernate.jpa.AvailableSettings.COLLECTION_CACHE_PREFIX;
-import static org.hibernate.jpa.AvailableSettings.DISCARD_PC_ON_CLOSE;
 import static org.hibernate.jpa.AvailableSettings.PERSISTENCE_UNIT_NAME;
 
 /**
@@ -145,7 +146,6 @@ public class EntityManagerFactoryBuilderImpl implements EntityManagerFactoryBuil
 	private final StandardServiceRegistry standardServiceRegistry;
 	private final ManagedResources managedResources;
 	private final MetadataBuilderImplementor metamodelBuilder;
-	private final SettingsImpl settings;
 
 	private static class JpaEntityNotFoundDelegate implements EntityNotFoundDelegate, Serializable {
 		/**
@@ -200,7 +200,7 @@ public class EntityManagerFactoryBuilderImpl implements EntityManagerFactoryBuil
 
 		// Build the "standard" service registry
 		ssrBuilder.applySettings( configurationValues );
-		this.settings = configure( ssrBuilder );
+		configure( ssrBuilder );
 		this.standardServiceRegistry = ssrBuilder.build();
 		configure( standardServiceRegistry, mergedSettings );
 
@@ -278,39 +278,39 @@ public class EntityManagerFactoryBuilderImpl implements EntityManagerFactoryBuil
 		return new DefaultEnhancementContext() {
 
 			@Override
-			public boolean isEntityClass(CtClass classDescriptor) {
+			public boolean isEntityClass(UnloadedClass classDescriptor) {
 				return managedResources.getAnnotatedClassNames().contains( classDescriptor.getName() )
 						&& super.isEntityClass( classDescriptor );
 			}
 
 			@Override
-			public boolean isCompositeClass(CtClass classDescriptor) {
+			public boolean isCompositeClass(UnloadedClass classDescriptor) {
 				return managedResources.getAnnotatedClassNames().contains( classDescriptor.getName() )
 						&& super.isCompositeClass( classDescriptor );
 			}
 
 			@Override
-			public boolean doBiDirectionalAssociationManagement(CtField field) {
+			public boolean doBiDirectionalAssociationManagement(UnloadedField field) {
 				return associationManagementEnabled;
 			}
 
 			@Override
-			public boolean doDirtyCheckingInline(CtClass classDescriptor) {
+			public boolean doDirtyCheckingInline(UnloadedClass classDescriptor) {
 				return dirtyTrackingEnabled;
 			}
 
 			@Override
-			public boolean hasLazyLoadableAttributes(CtClass classDescriptor) {
+			public boolean hasLazyLoadableAttributes(UnloadedClass classDescriptor) {
 				return lazyInitializationEnabled;
 			}
 
 			@Override
-			public boolean isLazyLoadable(CtField field) {
+			public boolean isLazyLoadable(UnloadedField field) {
 				return lazyInitializationEnabled;
 			}
 
 			@Override
-			public boolean doExtendedEnhancement(CtClass classDescriptor) {
+			public boolean doExtendedEnhancement(UnloadedClass classDescriptor) {
 				// doesn't make any sense to have extended enhancement enabled at runtime. we only enhance entities anyway.
 				return false;
 			}
@@ -580,21 +580,15 @@ public class EntityManagerFactoryBuilderImpl implements EntityManagerFactoryBuil
 		return new CacheRegionDefinition( cacheType, role, usage, region, lazyProperty );
 	}
 
-	private SettingsImpl configure(StandardServiceRegistryBuilder ssrBuilder) {
-		final SettingsImpl settings = new SettingsImpl();
+	private void configure(StandardServiceRegistryBuilder ssrBuilder) {
 
 		applyJdbcConnectionProperties( ssrBuilder );
-		applyTransactionProperties( ssrBuilder, settings );
+		applyTransactionProperties( ssrBuilder );
 
 		// flush beforeQuery completion validation
 		if ( "true".equals( configurationValues.get( Environment.FLUSH_BEFORE_COMPLETION ) ) ) {
 			ssrBuilder.applySetting( Environment.FLUSH_BEFORE_COMPLETION, "false" );
 			LOG.definingFlushBeforeCompletionIgnoredInHem( Environment.FLUSH_BEFORE_COMPLETION );
-		}
-
-		final Object value = configurationValues.get( DISCARD_PC_ON_CLOSE );
-		if ( value != null ) {
-			settings.setReleaseResourcesOnCloseEnabled( "true".equals( value ) );
 		}
 
 //		final StrategySelector strategySelector = ssrBuilder.getBootstrapServiceRegistry().getService( StrategySelector.class );
@@ -604,8 +598,6 @@ public class EntityManagerFactoryBuilderImpl implements EntityManagerFactoryBuil
 //					loadSessionInterceptorClass( interceptorSetting, strategySelector )
 //			);
 //		}
-
-		return settings;
 	}
 
 	private void applyJdbcConnectionProperties(StandardServiceRegistryBuilder ssrBuilder) {
@@ -646,7 +638,7 @@ public class EntityManagerFactoryBuilderImpl implements EntityManagerFactoryBuil
 		}
 	}
 
-	private void applyTransactionProperties(StandardServiceRegistryBuilder ssrBuilder, SettingsImpl settings) {
+	private void applyTransactionProperties(StandardServiceRegistryBuilder ssrBuilder) {
 		PersistenceUnitTransactionType txnType = PersistenceUnitTransactionTypeHelper.interpretTransactionType(
 				configurationValues.get( JPA_TRANSACTION_TYPE )
 		);
@@ -657,7 +649,6 @@ public class EntityManagerFactoryBuilderImpl implements EntityManagerFactoryBuil
 			// is it more appropriate to have this be based on bootstrap entry point (EE vs SE)?
 			txnType = PersistenceUnitTransactionType.RESOURCE_LOCAL;
 		}
-		settings.setTransactionType( txnType );
 		boolean hasTxStrategy = configurationValues.containsKey( TRANSACTION_COORDINATOR_STRATEGY );
 		if ( hasTxStrategy ) {
 			LOG.overridingTransactionStrategyDangerous( TRANSACTION_COORDINATOR_STRATEGY );
@@ -909,6 +900,11 @@ public class EntityManagerFactoryBuilderImpl implements EntityManagerFactoryBuil
 		final boolean jtaTransactionAccessEnabled = readBooleanConfigurationValue( AvailableSettings.ALLOW_JTA_TRANSACTION_ACCESS );
 		if ( !jtaTransactionAccessEnabled ) {
 			( ( SessionFactoryBuilderImplementor ) sfBuilder ).disableJtaTransactionAccess();
+		}
+
+		final boolean allowRefreshDetachedEntity = readBooleanConfigurationValue( org.hibernate.cfg.AvailableSettings.ALLOW_REFRESH_DETACHED_ENTITY );
+		if ( !allowRefreshDetachedEntity ) {
+			( (SessionFactoryBuilderImplementor) sfBuilder ).disableRefreshDetachedEntity();
 		}
 
 		// Locate and apply any requested SessionFactoryObserver

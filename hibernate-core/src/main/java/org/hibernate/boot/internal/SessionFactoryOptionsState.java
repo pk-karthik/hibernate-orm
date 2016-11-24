@@ -7,6 +7,7 @@
 package org.hibernate.boot.internal;
 
 import java.util.Map;
+import java.util.TimeZone;
 
 import org.hibernate.ConnectionReleaseMode;
 import org.hibernate.CustomEntityDirtinessStrategy;
@@ -47,6 +48,12 @@ public interface SessionFactoryOptionsState {
 	boolean isJpaBootstrap();
 
 	boolean isJtaTransactionAccessEnabled();
+
+	boolean isAllowRefreshDetachedEntity();
+
+	boolean isAllowOutOfTransactionUpdateOperations();
+
+	boolean isReleaseResourcesOnCloseEnabled();
 
 	Object getBeanManagerReference();
 
@@ -112,6 +119,8 @@ public interface SessionFactoryOptionsState {
 
 	boolean isProcedureParameterNullPassingEnabled();
 
+	boolean isCollectionJoinSubqueryRewriteEnabled();
+
 	boolean isSecondLevelCacheEnabled();
 
 	boolean isQueryCacheEnabled();
@@ -161,4 +170,6 @@ public interface SessionFactoryOptionsState {
 	Map<String, SQLFunction> getCustomSqlFunctionMap();
 
 	boolean isPreferUserTransaction();
+
+	TimeZone getJdbcTimeZone();
 }

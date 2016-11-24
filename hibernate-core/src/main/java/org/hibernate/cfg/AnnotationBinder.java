@@ -655,6 +655,13 @@ public final class AnnotationBinder {
 				if ( fk != null && !BinderHelper.isEmptyAnnotationValue( fk.name() ) ) {
 					key.setForeignKeyName( fk.name() );
 				}
+				else {
+					final PrimaryKeyJoinColumn pkJoinColumn = clazzToProcess.getAnnotation( PrimaryKeyJoinColumn.class );
+					if ( pkJoinColumn != null && pkJoinColumn.foreignKey() != null
+							&& !StringHelper.isEmpty( pkJoinColumn.foreignKey().name() ) ) {
+						key.setForeignKeyName( pkJoinColumn.foreignKey().name() );
+					}
+				}
 				if ( onDeleteAnn != null ) {
 					key.setCascadeDeleteEnabled( OnDeleteAction.CASCADE.equals( onDeleteAnn.action() ) );
 				}
@@ -1607,13 +1614,15 @@ public final class AnnotationBinder {
 			MetadataBuildingContext context,
 			Map<XClass, InheritanceState> inheritanceStatePerClass) throws MappingException {
 
-		if ( entityBinder.isPropertyDefinedInSuperHierarchy( inferredData.getPropertyName() ) ) {
-			LOG.debugf(
-					"Skipping attribute [%s : %s] as it was already processed as part of super hierarchy",
-					inferredData.getClassOrElementName(),
-					inferredData.getPropertyName()
-			);
-			return;
+		if ( !propertyHolder.isComponent() ) {
+			if ( entityBinder.isPropertyDefinedInSuperHierarchy( inferredData.getPropertyName() ) ) {
+				LOG.debugf(
+						"Skipping attribute [%s : %s] as it was already processed as part of super hierarchy",
+						inferredData.getClassOrElementName(),
+						inferredData.getPropertyName()
+				);
+				return;
+			}
 		}
 
 		/**
@@ -2925,6 +2934,7 @@ public final class AnnotationBinder {
 			}
 			else if ( joinColumn != null ) {
 				value.setForeignKeyName( StringHelper.nullIfEmpty( joinColumn.foreignKey().name() ) );
+				value.setForeignKeyDefinition( StringHelper.nullIfEmpty( joinColumn.foreignKey().foreignKeyDefinition() ) );
 			}
 		}
 

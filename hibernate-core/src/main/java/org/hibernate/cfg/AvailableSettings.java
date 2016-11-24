@@ -10,6 +10,7 @@ import org.hibernate.boot.MetadataBuilder;
 import org.hibernate.query.internal.ParameterMetadataImpl;
 import org.hibernate.resource.transaction.spi.TransactionCoordinator;
 import org.hibernate.resource.transaction.spi.TransactionCoordinatorBuilder;
+import org.hibernate.tool.schema.JdbcMetadaAccessStrategy;
 import org.hibernate.tool.schema.SourceType;
 
 /**
@@ -231,22 +232,41 @@ public interface AvailableSettings {
 	String JPA_METAMODEL_GENERATION = "hibernate.ejb.metamodel.generation";
 
 	/**
+	 * Setting that indicates whether to build the JPA types. Accepts
+	 * 3 values:<ul>
+	 *     <li>
+	 *         <b>enabled</b> - Do the build
+	 *     </li>
+	 *     <li>
+	 *         <b>disabled</b> - Do not so the build
+	 *     </li>
+	 *     <li>
+	 *         <b>ignoreUnsupported</b> - Do the build, but ignore any non-JPA features that would otherwise
+	 *         result in a failure.
+	 *     </li>
+	 * </ul>
+	 *
+	 *
+	 */
+	@Deprecated
+	String JPA_METAMODEL_POPULATION = "hibernate.ejb.metamodel.population";
+
+	/**
 	 * Setting that controls whether we seek out JPA "static metamodel" classes and populate them.  Accepts
 	 * 3 values:<ul>
 	 *     <li>
-	 *         <b>enabled</b> - Do the population
+	 *         <b>enabled</b> -Do the population
 	 *     </li>
 	 *     <li>
 	 *         <b>disabled</b> - Do not do the population
 	 *     </li>
 	 *     <li>
-	 *         <b>ignoreUnsupported</b> - Do the population, but ignore any non-JPA features that would otherwise
+	 *         <b>skipUnsupported</b> - Do the population, but ignore any non-JPA features that would otherwise
 	 *         result in the population failing.
 	 *     </li>
 	 * </ul>
-	 *
 	 */
-	String JPA_METAMODEL_POPULATION = "hibernate.ejb.metamodel.population";
+	String STATIC_METAMODEL_POPULATION = "hibernate.jpa.static_metamodel.population";
 
 
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -692,6 +712,13 @@ public interface AvailableSettings {
 	String BATCH_VERSIONED_DATA = "hibernate.jdbc.batch_versioned_data";
 
 	/**
+	 * Default JDBC TimeZone. Unless specified, the JVM default TimeZone is going to be used by the underlying JDBC Driver.
+	 *
+	 * @since 5.2.3
+	 */
+	String JDBC_TIME_ZONE = "hibernate.jdbc.time_zone";
+
+	/**
 	 * Enable automatic session close at end of transaction
 	 */
 	String AUTO_CLOSE_SESSION = "hibernate.transaction.auto_close_session";
@@ -891,14 +918,33 @@ public interface AvailableSettings {
 	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	/**
-	 * The {@link org.hibernate.cache.spi.RegionFactory} implementation class
+	 * The {@link org.hibernate.cache.spi.RegionFactory} implementation.  Can refer to:<ul>
+	 *     <li>an Object implementing {@link org.hibernate.cache.spi.RegionFactory}</li>
+	 *     <li>a Class implementing {@link org.hibernate.cache.spi.RegionFactory}</li>
+	 *     <li>FQN of a Class implementing {@link org.hibernate.cache.spi.RegionFactory}</li>
+	 * </ul>
 	 */
 	String CACHE_REGION_FACTORY = "hibernate.cache.region.factory_class";
+
+	/**
+	 * Allow control to specify the {@link org.hibernate.cache.spi.CacheKeysFactory} impl to use.
+	 * Can refer to:<ul>
+	 *     <li>an Object implementing {@link org.hibernate.cache.spi.CacheKeysFactory}</li>
+	 *     <li>a Class implementing {@link org.hibernate.cache.spi.CacheKeysFactory}</li>
+	 *     <li>FQN of a Class implementing {@link org.hibernate.cache.spi.CacheKeysFactory}</li>
+	 *     <li>'default' as a short name for {@link org.hibernate.cache.internal.DefaultCacheKeysFactory}</li>
+	 *     <li>'simple' as a short name for {@link org.hibernate.cache.internal.SimpleCacheKeysFactory}</li>
+	 * </ul>
+	 *
+	 * @since 5.2 - note that currently this is only honored for hibernate-infinispan
+	 */
+	String CACHE_KEYS_FACTORY = "hibernate.cache.keys_factory";
 
 	/**
 	 * The <tt>CacheProvider</tt> implementation class
 	 */
 	String CACHE_PROVIDER_CONFIG = "hibernate.cache.provider_configuration_file_resource_path";
+
 	/**
 	 * Enable the second-level cache (enabled by default)
 	 */
@@ -1268,10 +1314,32 @@ public interface AvailableSettings {
 	String HBM2DDL_FILTER_PROVIDER = "hibernate.hbm2ddl.schema_filter_provider";
 
 	/**
+	 * Setting to choose the strategy used to access the JDBC Metadata.
+	 *
+	 * Valid options are defined by the {@link JdbcMetadaAccessStrategy} enum.
+	 *
+	 * @see JdbcMetadaAccessStrategy
+	 */
+	String HBM2DDL_JDBC_METADATA_EXTRACTOR_STRATEGY = "hibernate.hbm2ddl.jdbc_metadata_extraction_strategy";
+
+	/**
 	 * Identifies the delimiter to use to separate schema management statements in script outputs
 	 */
 	String HBM2DDL_DELIMITER = "hibernate.hbm2ddl.delimiter";
 
+	/**
+	 * The name of the charset used by the schema generation resource. Without specifying this configuration property, the JVM default charset is used.
+	 *
+	 * @since 5.2.3
+	 */
+	String HBM2DDL_CHARSET_NAME = "hibernate.hbm2ddl.charset_name";
+
+	/**
+	 * Whether the schema migration tool should halt on error, therefore terminating the bootstrap process.
+	 *
+	 * @since 5.2.4
+	 */
+	String HBM2DDL_HALT_ON_ERROR = "hibernate.hbm2ddl.halt_on_error";
 
 	String JMX_ENABLED = "hibernate.jmx.enabled";
 	String JMX_PLATFORM_SERVER = "hibernate.jmx.usePlatformServer";
@@ -1456,7 +1524,7 @@ public interface AvailableSettings {
 	 */
 	String PROCEDURE_NULL_PARAM_PASSING = "hibernate.proc.param_null_passing";
 
-	/*
+	/**
 	 * Enable instantiation of composite/embedded objects when all of its attribute values are {@code null}.
 	 * The default (and historical) behavior is that a {@code null} reference will be used to represent the
 	 * composite when all of its attributes are {@code null}
@@ -1475,4 +1543,78 @@ public interface AvailableSettings {
 	 */
 	String ALLOW_JTA_TRANSACTION_ACCESS = "hibernate.jta.allowTransactionAccess";
 
+	/**
+	 * Setting that allows to perform update operations outside of a transaction boundary.
+	 *
+	 * Since version 5.2 Hibernate conforms with the JPA specification and does not allow anymore
+	 * to flush any update out of a transaction boundary.
+	 * <p/>
+	 * Values are: {@code true} to allow flush operations out of a transaction, {@code false} to disallow.
+	 * <p/>
+	 * The default behavior is {@code false}
+	 *
+	 * @since 5.2
+	 */
+	String ALLOW_UPDATE_OUTSIDE_TRANSACTION = "hibernate.allow_update_outside_transaction";
+
+	/**
+	 * Setting which indicates whether or not the new JOINS over collection tables should be rewritten to subqueries.
+	 * <p/>
+	 * Default is {@code true}.  Existing applications may want to disable this (set it {@code false}) for
+	 * upgrade compatibility.
+	 *
+	 * @since 5.2
+	 */
+	String COLLECTION_JOIN_SUBQUERY = "hibernate.collection_join_subquery";
+
+	/**
+	 * Setting that allows to call {@link javax.persistence.EntityManager#refresh(Object)}
+	 * or {@link org.hibernate.Session#refresh(Object)} on a detached entity instance when the {@link org.hibernate.Session} is obtained from
+	 * a JPA {@link javax.persistence.EntityManager}).
+	 * <p>
+	 * <p/>
+	 * Values are {@code true} permits the refresh, {@code false} does not permit the detached instance refresh and an {@link IllegalArgumentException} is thrown.
+	 * <p/>
+	 * The default value is {@code false} when the Session is bootstrapped via JPA {@link javax.persistence.EntityManagerFactory}, otherwise is {@code true}
+	 *
+	 * @since 5.2
+	 */
+	String ALLOW_REFRESH_DETACHED_ENTITY = "hibernate.allow_refresh_detached_entity";
+
+	/**
+	 * Setting that specifies how Hibernate will respond when multiple representations of the same persistent entity ("entity copy") is detected while merging.
+	 * <p/>
+	 * The possible values are:
+	 *
+	 * <ul>
+	 *     <li>disallow (the default): throws {@link java.lang.IllegalStateException} if an entity copy is detected</li>
+	 *     <li>allow: performs the merge operation on each entity copy that is detected</li>
+	 *     <li>log: (provided for testing only) performs the merge operation on each entity copy that is detected and logs information about the entity copies.
+	 *     This setting requires DEBUG logging be enabled for {@link org.hibernate.event.internal.EntityCopyAllowedLoggedObserver}.
+	 *     </li>
+	 * </ul>
+	 *
+	 * <p/>
+	 * In addition, the application may customize the behavior by providing an implementation of {@link org.hibernate.event.spi.EntityCopyObserver} and setting {@code hibernate.event.merge.entity_copy_observer} to the class name.
+	 * When this property is set to {@code allow} or {@code log}, Hibernate will merge each entity copy detected while cascading the merge operation.
+	 * In the process of merging each entity copy, Hibernate will cascade the merge operation from each entity copy to its associations with {@code CascadeType.MERGE} or {@code CascadeType.ALL}.
+	 * The entity state resulting from merging an entity copy will be overwritten when another entity copy is merged.
+	 *
+	 * @since 4.3
+	 */
+	String MERGE_ENTITY_COPY_OBSERVER = "hibernate.event.merge.entity_copy_observer";
+
+	/**
+	 * Setting which indicates whether or not to use {@link org.hibernate.dialect.pagination.LimitHandler}
+	 * implementations that sacrifices performance optimizations to allow legacy 4.x limit behavior.
+	 * </p>
+	 * Legacy 4.x behavior favored performing pagination in-memory by avoiding the use of the offset
+	 * value, which is overall poor performance.  In 5.x, the limit handler behavior favors performance
+	 * thus if the dialect doesn't support offsets, an exception is thrown instead.
+	 * </p>
+	 * Default is {@code false}.
+	 *
+	 * @since 5.2.5
+	 */
+	String USE_LEGACY_LIMIT_HANDLERS = "hibernate.legacy_limit_handler";
 }

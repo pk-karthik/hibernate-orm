@@ -6,12 +6,14 @@
  */
 package org.hibernate.boot.internal;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 import org.hibernate.ConnectionAcquisitionMode;
 import org.hibernate.ConnectionReleaseMode;
@@ -59,54 +61,9 @@ import org.hibernate.tuple.entity.EntityTuplizerFactory;
 
 import org.jboss.logging.Logger;
 
-import static org.hibernate.cfg.AvailableSettings.ACQUIRE_CONNECTIONS;
-import static org.hibernate.cfg.AvailableSettings.ALLOW_JTA_TRANSACTION_ACCESS;
-import static org.hibernate.cfg.AvailableSettings.AUTO_CLOSE_SESSION;
-import static org.hibernate.cfg.AvailableSettings.AUTO_EVICT_COLLECTION_CACHE;
-import static org.hibernate.cfg.AvailableSettings.AUTO_SESSION_EVENTS_LISTENER;
-import static org.hibernate.cfg.AvailableSettings.BATCH_FETCH_STYLE;
-import static org.hibernate.cfg.AvailableSettings.BATCH_VERSIONED_DATA;
-import static org.hibernate.cfg.AvailableSettings.CACHE_REGION_PREFIX;
-import static org.hibernate.cfg.AvailableSettings.CHECK_NULLABILITY;
-import static org.hibernate.cfg.AvailableSettings.CONNECTION_HANDLING;
-import static org.hibernate.cfg.AvailableSettings.CUSTOM_ENTITY_DIRTINESS_STRATEGY;
-import static org.hibernate.cfg.AvailableSettings.DEFAULT_BATCH_FETCH_SIZE;
-import static org.hibernate.cfg.AvailableSettings.DEFAULT_ENTITY_MODE;
-import static org.hibernate.cfg.AvailableSettings.ENABLE_LAZY_LOAD_NO_TRANS;
-import static org.hibernate.cfg.AvailableSettings.FLUSH_BEFORE_COMPLETION;
-import static org.hibernate.cfg.AvailableSettings.GENERATE_STATISTICS;
-import static org.hibernate.cfg.AvailableSettings.HQL_BULK_ID_STRATEGY;
-import static org.hibernate.cfg.AvailableSettings.INTERCEPTOR;
-import static org.hibernate.cfg.AvailableSettings.JPAQL_STRICT_COMPLIANCE;
-import static org.hibernate.cfg.AvailableSettings.JTA_TRACK_BY_THREAD;
-import static org.hibernate.cfg.AvailableSettings.LOG_SESSION_METRICS;
-import static org.hibernate.cfg.AvailableSettings.MAX_FETCH_DEPTH;
-import static org.hibernate.cfg.AvailableSettings.MULTI_TENANT_IDENTIFIER_RESOLVER;
-import static org.hibernate.cfg.AvailableSettings.ORDER_INSERTS;
-import static org.hibernate.cfg.AvailableSettings.ORDER_UPDATES;
-import static org.hibernate.cfg.AvailableSettings.PREFER_USER_TRANSACTION;
-import static org.hibernate.cfg.AvailableSettings.PROCEDURE_NULL_PARAM_PASSING;
-import static org.hibernate.cfg.AvailableSettings.QUERY_CACHE_FACTORY;
-import static org.hibernate.cfg.AvailableSettings.QUERY_STARTUP_CHECKING;
-import static org.hibernate.cfg.AvailableSettings.QUERY_SUBSTITUTIONS;
-import static org.hibernate.cfg.AvailableSettings.RELEASE_CONNECTIONS;
-import static org.hibernate.cfg.AvailableSettings.SESSION_FACTORY_NAME;
-import static org.hibernate.cfg.AvailableSettings.SESSION_FACTORY_NAME_IS_JNDI;
-import static org.hibernate.cfg.AvailableSettings.SESSION_SCOPED_INTERCEPTOR;
-import static org.hibernate.cfg.AvailableSettings.STATEMENT_BATCH_SIZE;
-import static org.hibernate.cfg.AvailableSettings.STATEMENT_FETCH_SIZE;
-import static org.hibernate.cfg.AvailableSettings.STATEMENT_INSPECTOR;
-import static org.hibernate.cfg.AvailableSettings.USE_DIRECT_REFERENCE_CACHE_ENTRIES;
-import static org.hibernate.cfg.AvailableSettings.USE_GET_GENERATED_KEYS;
-import static org.hibernate.cfg.AvailableSettings.USE_IDENTIFIER_ROLLBACK;
-import static org.hibernate.cfg.AvailableSettings.USE_MINIMAL_PUTS;
-import static org.hibernate.cfg.AvailableSettings.USE_QUERY_CACHE;
-import static org.hibernate.cfg.AvailableSettings.USE_SCROLLABLE_RESULTSET;
-import static org.hibernate.cfg.AvailableSettings.USE_SECOND_LEVEL_CACHE;
-import static org.hibernate.cfg.AvailableSettings.USE_SQL_COMMENTS;
-import static org.hibernate.cfg.AvailableSettings.USE_STRUCTURED_CACHE;
-import static org.hibernate.cfg.AvailableSettings.WRAP_RESULT_SETS;
+import static org.hibernate.cfg.AvailableSettings.*;
 import static org.hibernate.engine.config.spi.StandardConverters.BOOLEAN;
+import static org.hibernate.jpa.AvailableSettings.DISCARD_PC_ON_CLOSE;
 
 /**
  * @author Gail Badner
@@ -465,6 +422,18 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 	}
 
 	@Override
+	public SessionFactoryBuilder allowOutOfTransactionUpdateOperations(boolean allow) {
+		this.options.allowOutOfTransactionUpdateOperations = allow;
+		return this;
+	}
+
+	@Override
+	public SessionFactoryBuilder enableReleaseResourcesOnCloseEnabled(boolean enable) {
+		this.options.releaseResourcesOnCloseEnabled = enable;
+		return this;
+	}
+
+	@Override
 	@SuppressWarnings("unchecked")
 	public <T extends SessionFactoryBuilder> T unwrap(Class<T> type) {
 		return (T) this;
@@ -479,6 +448,11 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 	@Override
 	public void markAsJpaBootstrap() {
 		this.options.jpaBootstrap = true;
+	}
+
+	@Override
+	public void disableRefreshDetachedEntity() {
+		this.options.allowRefreshDetachedEntity = false;
 	}
 
 	@Override
@@ -511,6 +485,9 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 		private boolean flushBeforeCompletionEnabled;
 		private boolean autoCloseSessionEnabled;
 		private boolean jtaTransactionAccessEnabled;
+		private boolean allowOutOfTransactionUpdateOperations;
+		private boolean releaseResourcesOnCloseEnabled;
+		private boolean allowRefreshDetachedEntity;
 
 		// (JTA) transaction handling
 		private boolean jtaTrackByThread;
@@ -542,6 +519,7 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 		private boolean orderUpdatesEnabled;
 		private boolean orderInsertsEnabled;
 
+
 		// multi-tenancy
 		private MultiTenancyStrategy multiTenancyStrategy;
 		private CurrentTenantIdentifierResolver currentTenantIdentifierResolver;
@@ -551,6 +529,7 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 		private boolean strictJpaQueryLanguageCompliance;
 		private boolean namedQueryStartupCheckingEnabled;
 		private final boolean procedureParameterNullPassingEnabled;
+		private final boolean collectionJoinSubqueryRewriteEnabled;
 
 		// Caching
 		private boolean secondLevelCacheEnabled;
@@ -574,6 +553,7 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 		private boolean commentsEnabled;
 		private PhysicalConnectionHandlingMode connectionHandlingMode;
 		private boolean wrapResultSetsEnabled;
+		private TimeZone jdbcTimeZone;
 
 		private Map<String, SQLFunction> sqlFunctions;
 
@@ -603,6 +583,12 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 			);
 			this.jtaTransactionAccessEnabled = cfgService.getSetting(
 					ALLOW_JTA_TRANSACTION_ACCESS,
+					BOOLEAN,
+					true
+			);
+
+			this.allowRefreshDetachedEntity = cfgService.getSetting(
+					ALLOW_REFRESH_DETACHED_ENTITY,
 					BOOLEAN,
 					true
 			);
@@ -669,6 +655,7 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 			this.strictJpaQueryLanguageCompliance = cfgService.getSetting( JPAQL_STRICT_COMPLIANCE, BOOLEAN, false );
 			this.namedQueryStartupCheckingEnabled = cfgService.getSetting( QUERY_STARTUP_CHECKING, BOOLEAN, true );
 			this.procedureParameterNullPassingEnabled = cfgService.getSetting( PROCEDURE_NULL_PARAM_PASSING, BOOLEAN, false );
+			this.collectionJoinSubqueryRewriteEnabled = cfgService.getSetting( COLLECTION_JOIN_SUBQUERY, BOOLEAN, true );
 
 			this.secondLevelCacheEnabled = cfgService.getSetting( USE_SECOND_LEVEL_CACHE, BOOLEAN, true );
 			this.queryCacheEnabled = cfgService.getSetting( USE_QUERY_CACHE, BOOLEAN, false );
@@ -738,6 +725,34 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 			this.commentsEnabled = ConfigurationHelper.getBoolean( USE_SQL_COMMENTS, configurationSettings );
 
 			this.preferUserTransaction = ConfigurationHelper.getBoolean( PREFER_USER_TRANSACTION, configurationSettings, false  );
+
+			this.allowOutOfTransactionUpdateOperations = ConfigurationHelper.getBoolean(
+					ALLOW_UPDATE_OUTSIDE_TRANSACTION,
+					configurationSettings,
+					false
+			);
+
+			this.releaseResourcesOnCloseEnabled = ConfigurationHelper.getBoolean(
+					DISCARD_PC_ON_CLOSE,
+					configurationSettings,
+					false
+			);
+			Object jdbcTimeZoneValue = configurationSettings.get(
+					JDBC_TIME_ZONE
+			);
+
+			if ( jdbcTimeZoneValue instanceof TimeZone ) {
+				this.jdbcTimeZone = (TimeZone) jdbcTimeZoneValue;
+			}
+			else if ( jdbcTimeZoneValue instanceof ZoneId ) {
+				this.jdbcTimeZone = TimeZone.getTimeZone( (ZoneId) jdbcTimeZoneValue );
+			}
+			else if ( jdbcTimeZoneValue instanceof String ) {
+				this.jdbcTimeZone = TimeZone.getTimeZone( ZoneId.of((String) jdbcTimeZoneValue) );
+			}
+			else if ( jdbcTimeZoneValue != null ) {
+				throw new IllegalArgumentException( "Configuration property " + JDBC_TIME_ZONE + " value [" + jdbcTimeZoneValue + "] is not supported!" );
+			}
 		}
 
 		private static Interceptor determineInterceptor(Map configurationSettings, StrategySelector strategySelector) {
@@ -866,6 +881,19 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 		@Override
 		public boolean isJtaTransactionAccessEnabled() {
 			return jtaTransactionAccessEnabled;
+		}
+
+		public boolean isAllowRefreshDetachedEntity() {
+			return allowRefreshDetachedEntity;
+		}
+
+		public boolean isAllowOutOfTransactionUpdateOperations() {
+			return allowOutOfTransactionUpdateOperations;
+		}
+
+		@Override
+		public boolean isReleaseResourcesOnCloseEnabled() {
+			return releaseResourcesOnCloseEnabled;
 		}
 
 		@Override
@@ -1029,6 +1057,11 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 		}
 
 		@Override
+		public boolean isCollectionJoinSubqueryRewriteEnabled() {
+			return collectionJoinSubqueryRewriteEnabled;
+		}
+
+		@Override
 		public boolean isSecondLevelCacheEnabled() {
 			return secondLevelCacheEnabled;
 		}
@@ -1142,6 +1175,11 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 		public boolean isPreferUserTransaction() {
 			return this.preferUserTransaction;
 		}
+
+		@Override
+		public TimeZone getJdbcTimeZone() {
+			return this.jdbcTimeZone;
+		}
 	}
 
 	@Override
@@ -1157,6 +1195,19 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 	@Override
 	public boolean isJtaTransactionAccessEnabled() {
 		return options.isJtaTransactionAccessEnabled();
+	}
+
+	public boolean isAllowRefreshDetachedEntity() {
+		return options.isAllowRefreshDetachedEntity();
+	}
+
+	public boolean isAllowOutOfTransactionUpdateOperations() {
+		return options.isAllowOutOfTransactionUpdateOperations();
+	}
+
+	@Override
+	public boolean isReleaseResourcesOnCloseEnabled(){
+		return options.releaseResourcesOnCloseEnabled;
 	}
 
 	@Override
@@ -1320,6 +1371,11 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 	}
 
 	@Override
+	public boolean isCollectionJoinSubqueryRewriteEnabled() {
+		return options.isCollectionJoinSubqueryRewriteEnabled();
+	}
+
+	@Override
 	public boolean isSecondLevelCacheEnabled() {
 		return options.isSecondLevelCacheEnabled();
 	}
@@ -1432,5 +1488,10 @@ public class SessionFactoryBuilderImpl implements SessionFactoryBuilderImplement
 	@Override
 	public boolean isPreferUserTransaction() {
 		return options.isPreferUserTransaction();
+	}
+
+	@Override
+	public TimeZone getJdbcTimeZone() {
+		return options.getJdbcTimeZone();
 	}
 }

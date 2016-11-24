@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import javax.naming.Reference;
 import javax.naming.StringRefAddr;
 import javax.persistence.EntityGraph;
@@ -191,6 +192,7 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 
 	private final transient TypeResolver typeResolver;
 	private final transient TypeHelper typeHelper;
+	private transient StatisticsImplementor statisticsImplementor;
 
 
 	public SessionFactoryImpl(final MetadataImplementor metadata, SessionFactoryOptions options) {
@@ -271,13 +273,12 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 		}
 		final IntegratorObserver integratorObserver = new IntegratorObserver();
 		this.observer.addObserver( integratorObserver );
-		for ( Integrator integrator : serviceRegistry.getService( IntegratorService.class ).getIntegrators() ) {
-			integrator.integrate( metadata, this, this.serviceRegistry );
-			integratorObserver.integrators.add( integrator );
-		}
 		try {
+			for ( Integrator integrator : serviceRegistry.getService( IntegratorService.class ).getIntegrators() ) {
+				integrator.integrate( metadata, this, this.serviceRegistry );
+				integratorObserver.integrators.add( integrator );
+			}
 			//Generators:
-
 			this.identifierGenerators = new HashMap<>();
 			metadata.getEntityBindings().stream().filter( model -> !model.isInherited() ).forEach( model -> {
 				IdentifierGenerator generator = model.getIdentifier().createIdentifierGenerator(
@@ -377,6 +378,7 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 				integrator.disintegrate( this, serviceRegistry );
 				integratorObserver.integrators.remove( integrator );
 			}
+			serviceRegistry.destroy();
 			throw e;
 		}
 	}
@@ -738,8 +740,6 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 		cacheAccess.close();
 		metamodel.close();
 
-		cacheAccess.close();
-
 		queryPlanCache.cleanup();
 
 		if ( delayedDropAction != null ) {
@@ -1074,6 +1074,8 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 		private boolean autoClose;
 		private boolean autoClear;
 		private String tenantIdentifier;
+		private TimeZone jdbcTimeZone;
+
 		private List<SessionEventListener> listeners;
 
 		//todo : expose setting
@@ -1095,6 +1097,7 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 			if ( sessionFactory.getCurrentTenantIdentifierResolver() != null ) {
 				tenantIdentifier = sessionFactory.getCurrentTenantIdentifierResolver().resolveCurrentTenantIdentifier();
 			}
+			this.jdbcTimeZone = sessionFactory.getSessionFactoryOptions().getJdbcTimeZone();
 
 			listeners = sessionFactory.getSessionFactoryOptions().getBaselineSessionEventsListenerBuilder().buildBaselineList();
 		}
@@ -1185,6 +1188,10 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 			return tenantIdentifier;
 		}
 
+		@Override
+		public TimeZone getJdbcTimeZone() {
+			return jdbcTimeZone;
+		}
 
 		// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		// SessionBuilder
@@ -1305,6 +1312,12 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 			listeners.clear();
 			return (T) this;
 		}
+
+		@Override
+		public T jdbcTimeZone(TimeZone timeZone) {
+			jdbcTimeZone = timeZone;
+			return (T) this;
+		}
 	}
 
 	public static class StatelessSessionBuilderImpl implements StatelessSessionBuilder, SessionCreationOptions {
@@ -1381,6 +1394,11 @@ public final class SessionFactoryImpl implements SessionFactoryImplementor {
 		@Override
 		public String getTenantIdentifier() {
 			return tenantIdentifier;
+		}
+
+		@Override
+		public TimeZone getJdbcTimeZone() {
+			return sessionFactory.getSessionFactoryOptions().getJdbcTimeZone();
 		}
 
 		@Override

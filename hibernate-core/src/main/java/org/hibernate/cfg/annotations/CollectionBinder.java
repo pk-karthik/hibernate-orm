@@ -829,6 +829,11 @@ public abstract class CollectionBinder {
 		if ( debugEnabled ) {
 			LOG.debugf( "Binding a OneToMany: %s.%s through a foreign key", propertyHolder.getEntityName(), propertyName );
 		}
+		if ( buildingContext == null ) {
+			throw new AssertionFailure(
+					"CollectionSecondPass for oneToMany should not be called with null mappings"
+			);
+		}
 		org.hibernate.mapping.OneToMany oneToMany = new org.hibernate.mapping.OneToMany( buildingContext.getMetadataCollector(), collection.getOwner() );
 		collection.setElement( oneToMany );
 		oneToMany.setReferencedEntityName( collectionType.getName() );
@@ -846,16 +851,11 @@ public abstract class CollectionBinder {
 				collection.setOrderBy( orderByFragment );
 			}
 		}
-
-		if ( buildingContext == null ) {
-			throw new AssertionFailure(
-					"CollectionSecondPass for oneToMany should not be called with null mappings"
-			);
-		}
 		Map<String, Join> joins = buildingContext.getMetadataCollector().getJoins( assocClass );
 		if ( associatedClass == null ) {
 			throw new MappingException(
-					"Association references unmapped class: " + assocClass
+					String.format("Association [%s] for entity [%s] references unmapped class [%s]",
+							propertyName, propertyHolder.getClassName(), assocClass)
 			);
 		}
 		oneToMany.setAssociatedClass( associatedClass );
@@ -1132,17 +1132,20 @@ public abstract class CollectionBinder {
 					}
 					else {
 						key.setForeignKeyName( StringHelper.nullIfEmpty( collectionTableAnn.foreignKey().name() ) );
+						key.setForeignKeyDefinition( StringHelper.nullIfEmpty( collectionTableAnn.foreignKey().foreignKeyDefinition() ) );
 					}
 				}
 				else {
 					final JoinTable joinTableAnn = property.getAnnotation( JoinTable.class );
 					if ( joinTableAnn != null ) {
 						String foreignKeyName = joinTableAnn.foreignKey().name();
+						String foreignKeyDefinition = joinTableAnn.foreignKey().foreignKeyDefinition();
 						ConstraintMode foreignKeyValue = joinTableAnn.foreignKey().value();
 						if ( joinTableAnn.joinColumns().length != 0 ) {
 							final JoinColumn joinColumnAnn = joinTableAnn.joinColumns()[0];
 							if ( "".equals( foreignKeyName ) ) {
 								foreignKeyName = joinColumnAnn.foreignKey().name();
+								foreignKeyDefinition = joinColumnAnn.foreignKey().foreignKeyDefinition();
 							}
 							if ( foreignKeyValue != ConstraintMode.NO_CONSTRAINT ) {
 								foreignKeyValue = joinColumnAnn.foreignKey().value();
@@ -1153,6 +1156,7 @@ public abstract class CollectionBinder {
 						}
 						else {
 							key.setForeignKeyName( StringHelper.nullIfEmpty( foreignKeyName ) );
+							key.setForeignKeyDefinition( StringHelper.nullIfEmpty( foreignKeyDefinition ) );
 						}
 					}
 					else {
@@ -1163,6 +1167,7 @@ public abstract class CollectionBinder {
 							}
 							else {
 								key.setForeignKeyName( StringHelper.nullIfEmpty( joinColumnAnn.foreignKey().name() ) );
+								key.setForeignKeyDefinition( StringHelper.nullIfEmpty( joinColumnAnn.foreignKey().foreignKeyDefinition() ) );
 							}
 						}
 					}
@@ -1342,11 +1347,13 @@ public abstract class CollectionBinder {
 				final JoinTable joinTableAnn = property.getAnnotation( JoinTable.class );
 				if ( joinTableAnn != null ) {
 					String foreignKeyName = joinTableAnn.inverseForeignKey().name();
+					String foreignKeyDefinition = joinTableAnn.inverseForeignKey().foreignKeyDefinition();
 					ConstraintMode foreignKeyValue = joinTableAnn.foreignKey().value();
 					if ( joinTableAnn.inverseJoinColumns().length != 0 ) {
 						final JoinColumn joinColumnAnn = joinTableAnn.inverseJoinColumns()[0];
 						if ( "".equals( foreignKeyName ) ) {
 							foreignKeyName = joinColumnAnn.foreignKey().name();
+							foreignKeyDefinition = joinColumnAnn.foreignKey().foreignKeyDefinition();
 						}
 						if ( foreignKeyValue != ConstraintMode.NO_CONSTRAINT ) {
 							foreignKeyValue = joinColumnAnn.foreignKey().value();
@@ -1357,6 +1364,7 @@ public abstract class CollectionBinder {
 					}
 					else {
 						element.setForeignKeyName( StringHelper.nullIfEmpty( foreignKeyName ) );
+						element.setForeignKeyDefinition( StringHelper.nullIfEmpty( foreignKeyDefinition ) );
 					}
 				}
 			}
@@ -1429,6 +1437,8 @@ public abstract class CollectionBinder {
 			}
 
 			if ( AnnotatedClassType.EMBEDDABLE.equals( classType ) ) {
+				holder.prepare( property );
+
 				EntityBinder entityBinder = new EntityBinder();
 				PersistentClass owner = collValue.getOwner();
 				boolean isPropertyAnnotated;

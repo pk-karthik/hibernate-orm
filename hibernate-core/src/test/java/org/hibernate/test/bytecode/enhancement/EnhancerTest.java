@@ -6,10 +6,18 @@
  */
 package org.hibernate.test.bytecode.enhancement;
 
+import org.hibernate.bytecode.enhance.spi.UnloadedClass;
+
+import org.hibernate.test.bytecode.enhancement.association.InheritedAttributeAssociationTestTask;
+import org.hibernate.test.bytecode.enhancement.lazy.group.LazyGroupUpdateTestTask;
+import org.hibernate.test.bytecode.enhancement.lazy.group.SimpleLazyGroupUpdateTestTask;
+import org.hibernate.test.bytecode.enhancement.otherentityentrycontext.OtherEntityEntryContextTestTask;
 import org.hibernate.testing.FailureExpected;
 import org.hibernate.testing.TestForIssue;
+import org.hibernate.testing.bytecode.enhancement.EnhancerTestContext;
 import org.hibernate.testing.bytecode.enhancement.EnhancerTestUtils;
 import org.hibernate.testing.junit4.BaseUnitTestCase;
+import org.hibernate.test.bytecode.enhancement.access.MixedAccessTestTask;
 import org.hibernate.test.bytecode.enhancement.association.ManyToManyAssociationTestTask;
 import org.hibernate.test.bytecode.enhancement.association.OneToManyAssociationTestTask;
 import org.hibernate.test.bytecode.enhancement.association.OneToOneAssociationTestTask;
@@ -17,6 +25,7 @@ import org.hibernate.test.bytecode.enhancement.basic.BasicEnhancementTestTask;
 import org.hibernate.test.bytecode.enhancement.basic.HHH9529TestTask;
 import org.hibernate.test.bytecode.enhancement.cascade.CascadeDeleteTestTask;
 import org.hibernate.test.bytecode.enhancement.dirty.DirtyTrackingTestTask;
+import org.hibernate.test.bytecode.enhancement.eviction.EvictionTestTask;
 import org.hibernate.test.bytecode.enhancement.extended.ExtendedAssociationManagementTestTasK;
 import org.hibernate.test.bytecode.enhancement.extended.ExtendedEnhancementTestTask;
 import org.hibernate.test.bytecode.enhancement.join.HHH3949TestTask1;
@@ -24,19 +33,24 @@ import org.hibernate.test.bytecode.enhancement.join.HHH3949TestTask2;
 import org.hibernate.test.bytecode.enhancement.join.HHH3949TestTask3;
 import org.hibernate.test.bytecode.enhancement.join.HHH3949TestTask4;
 import org.hibernate.test.bytecode.enhancement.lazy.HHH_10708.UnexpectedDeleteOneTestTask;
+import org.hibernate.test.bytecode.enhancement.lazy.HHH_10708.UnexpectedDeleteThreeTestTask;
 import org.hibernate.test.bytecode.enhancement.lazy.HHH_10708.UnexpectedDeleteTwoTestTask;
 import org.hibernate.test.bytecode.enhancement.lazy.LazyBasicFieldNotInitializedTestTask;
 import org.hibernate.test.bytecode.enhancement.lazy.LazyCollectionLoadingTestTask;
+import org.hibernate.test.bytecode.enhancement.lazy.LazyCollectionNoTransactionLoadingTestTask;
 import org.hibernate.test.bytecode.enhancement.lazy.LazyLoadingIntegrationTestTask;
 import org.hibernate.test.bytecode.enhancement.lazy.LazyLoadingTestTask;
+import org.hibernate.test.bytecode.enhancement.lazy.LazyProxyOnEnhancedEntityTestTask;
 import org.hibernate.test.bytecode.enhancement.lazy.basic.LazyBasicFieldAccessTestTask;
 import org.hibernate.test.bytecode.enhancement.lazy.basic.LazyBasicPropertyAccessTestTask;
 import org.hibernate.test.bytecode.enhancement.lazy.group.LazyGroupAccessTestTask;
 import org.hibernate.test.bytecode.enhancement.lazyCache.InitFromCacheTestTask;
+import org.hibernate.test.bytecode.enhancement.mapped.MappedSuperclassTestTask;
 import org.hibernate.test.bytecode.enhancement.merge.CompositeMergeTestTask;
 import org.hibernate.test.bytecode.enhancement.ondemandload.LazyCollectionWithClearedSessionTestTask;
 import org.hibernate.test.bytecode.enhancement.ondemandload.LazyCollectionWithClosedSessionTestTask;
 import org.hibernate.test.bytecode.enhancement.ondemandload.LazyEntityLoadingWithClosedSessionTestTask;
+import org.hibernate.test.bytecode.enhancement.otherentityentrycontext.OtherEntityEntryContextTestTask;
 import org.hibernate.test.bytecode.enhancement.pk.EmbeddedPKTestTask;
 import org.junit.Test;
 
@@ -57,8 +71,24 @@ public class EnhancerTest extends BaseUnitTestCase {
 	}
 
 	@Test
+	@TestForIssue( jiraKey = "HHH-10851" )
+	public void testAccess() {
+		EnhancerTestUtils.runEnhancerTestTask( MixedAccessTestTask.class );
+	}
+
+	@Test
 	public void testDirty() {
 		EnhancerTestUtils.runEnhancerTestTask( DirtyTrackingTestTask.class );
+	}
+
+	@Test
+	public void testEviction() {
+		EnhancerTestUtils.runEnhancerTestTask( EvictionTestTask.class );
+	}
+
+	@Test
+	public void testOtherPersistenceContext() {
+		EnhancerTestUtils.runEnhancerTestTask( OtherEntityEntryContextTestTask.class );
 	}
 
 	@Test
@@ -66,6 +96,7 @@ public class EnhancerTest extends BaseUnitTestCase {
 		EnhancerTestUtils.runEnhancerTestTask( OneToOneAssociationTestTask.class );
 		EnhancerTestUtils.runEnhancerTestTask( OneToManyAssociationTestTask.class );
 		EnhancerTestUtils.runEnhancerTestTask( ManyToManyAssociationTestTask.class );
+		EnhancerTestUtils.runEnhancerTestTask( InheritedAttributeAssociationTestTask.class );
 	}
 
 	@Test
@@ -75,6 +106,17 @@ public class EnhancerTest extends BaseUnitTestCase {
 
 		EnhancerTestUtils.runEnhancerTestTask( LazyBasicPropertyAccessTestTask.class );
 		EnhancerTestUtils.runEnhancerTestTask( LazyBasicFieldAccessTestTask.class );
+	}
+
+	@Test
+	@TestForIssue( jiraKey = "HHH-10922" )
+	public void testLazyProxyOnEnhancedEntity() {
+		EnhancerTestUtils.runEnhancerTestTask( LazyProxyOnEnhancedEntityTestTask.class, new EnhancerTestContext() {
+			@Override
+			public boolean hasLazyLoadableAttributes(UnloadedClass classDescriptor) {
+				return false;
+			}
+		} );
 	}
 
 	@Test
@@ -95,6 +137,23 @@ public class EnhancerTest extends BaseUnitTestCase {
 		EnhancerTestUtils.runEnhancerTestTask( LazyGroupAccessTestTask.class );
 	}
 
+	@Test
+	@TestForIssue( jiraKey = "HHH-11155" )
+	public void testLazyGroupsUpdate() {
+		EnhancerTestUtils.runEnhancerTestTask( LazyGroupUpdateTestTask.class );
+	}
+
+	@Test
+	@TestForIssue( jiraKey = "HHH-11155" )
+	public void testLazyGroupsUpdateSimple() {
+		EnhancerTestUtils.runEnhancerTestTask( SimpleLazyGroupUpdateTestTask.class );
+	}
+
+	@Test
+	public void testLazyCollectionNoTransactionHandling() {
+		EnhancerTestUtils.runEnhancerTestTask( LazyCollectionNoTransactionLoadingTestTask.class );
+	}
+
 	@Test(timeout = 10000)
 	@TestForIssue( jiraKey = "HHH-10055" )
 	@FailureExpected( jiraKey = "HHH-10055" )
@@ -109,6 +168,20 @@ public class EnhancerTest extends BaseUnitTestCase {
 	public void testLazyUnexpectedDelete() {
 		EnhancerTestUtils.runEnhancerTestTask( UnexpectedDeleteOneTestTask.class );
 		EnhancerTestUtils.runEnhancerTestTask( UnexpectedDeleteTwoTestTask.class );
+		EnhancerTestUtils.runEnhancerTestTask( UnexpectedDeleteThreeTestTask.class );
+	}
+
+	@Test
+	@TestForIssue( jiraKey = "HHH-10646" )
+	public void testMappedSuperclass() {
+		EnhancerTestUtils.runEnhancerTestTask( MappedSuperclassTestTask.class );
+		EnhancerTestUtils.runEnhancerTestTask( MappedSuperclassTestTask.class, new EnhancerTestContext() {
+			@Override
+			public boolean hasLazyLoadableAttributes(UnloadedClass classDescriptor) {
+				// HHH-10981 - Without lazy loading, the generation of getters and setters has a different code path
+				return false;
+			}
+		} );
 	}
 
 	@Test

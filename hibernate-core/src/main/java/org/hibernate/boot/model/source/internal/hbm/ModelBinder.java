@@ -994,6 +994,8 @@ public class ModelBinder {
 				rootEntityDescriptor.getTable()
 		);
 
+		versionValue.makeVersion();
+
 		bindSimpleValueType(
 				sourceDocument,
 				versionAttributeSource.getTypeInformation(),
@@ -1815,8 +1817,11 @@ public class ModelBinder {
 
 		keyBinding.setForeignKeyName( secondaryTableSource.getExplicitForeignKeyName() );
 
-		secondaryTableJoin.createPrimaryKey();
-		secondaryTableJoin.createForeignKey();
+		// skip creating primary and foreign keys for a subselect.
+		if ( secondaryTable.getSubselect() == null ) {
+			secondaryTableJoin.createPrimaryKey();
+			secondaryTableJoin.createForeignKey();
+		}
 	}
 
 	private Property createEmbeddedAttribute(
@@ -1889,7 +1894,7 @@ public class ModelBinder {
 				sourceDocument,
 				attributeSource.getRelationalValueSources(),
 				value,
-				true,
+				attributeSource.areValuesNullableByDefault(),
 				new RelationalObjectBinder.ColumnNamingDelegate() {
 					@Override
 					public Identifier determineImplicitName(LocalMetadataBuildingContext context) {
@@ -3386,7 +3391,7 @@ public class ModelBinder {
 
 				makeIdentifier(
 						mappingDocument,
-						new IdentifierGeneratorDefinition( idSource.getGeneratorName() ),
+						new IdentifierGeneratorDefinition( idSource.getGeneratorName(), idSource.getParameters() ),
 						null,
 						idBinding
 				);

@@ -7,6 +7,7 @@
 package org.hibernate.boot.spi;
 
 import java.util.Map;
+import java.util.TimeZone;
 
 import org.hibernate.ConnectionReleaseMode;
 import org.hibernate.CustomEntityDirtinessStrategy;
@@ -59,6 +60,10 @@ public interface SessionFactoryOptions {
 	boolean isJpaBootstrap();
 
 	boolean isJtaTransactionAccessEnabled();
+
+	default boolean isAllowRefreshDetachedEntity() {
+		return false;
+	}
 
 	/**
 	 * The name to be used for the SessionFactory.  This is use both in:<ul>
@@ -200,4 +205,12 @@ public interface SessionFactoryOptions {
 	boolean isPreferUserTransaction();
 
 	boolean isProcedureParameterNullPassingEnabled();
+
+	boolean isCollectionJoinSubqueryRewriteEnabled();
+
+	boolean isAllowOutOfTransactionUpdateOperations();
+
+	boolean isReleaseResourcesOnCloseEnabled();
+
+	TimeZone getJdbcTimeZone();
 }

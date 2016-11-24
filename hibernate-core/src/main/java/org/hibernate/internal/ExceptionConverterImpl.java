@@ -6,6 +6,8 @@
  */
 package org.hibernate.internal;
 
+import java.io.Serializable;
+import java.sql.SQLException;
 import javax.persistence.EntityExistsException;
 import javax.persistence.EntityNotFoundException;
 import javax.persistence.LockTimeoutException;
@@ -16,8 +18,6 @@ import javax.persistence.PersistenceException;
 import javax.persistence.PessimisticLockException;
 import javax.persistence.QueryTimeoutException;
 import javax.persistence.RollbackException;
-import java.io.Serializable;
-import java.sql.SQLException;
 
 import org.hibernate.HibernateException;
 import org.hibernate.JDBCException;
@@ -191,7 +191,7 @@ public class ExceptionConverterImpl implements ExceptionConverter {
 			final Serializable identifier = sose.getIdentifier();
 			if ( identifier != null ) {
 				try {
-					final Object entity = sharedSessionContract.load( sose.getEntityName(), identifier );
+					final Object entity = sharedSessionContract.internalLoad( sose.getEntityName(), identifier, false, true);
 					if ( entity instanceof Serializable ) {
 						//avoid some user errors regarding boundary crossing
 						pe = new OptimisticLockException( e.getMessage(), e, entity );
