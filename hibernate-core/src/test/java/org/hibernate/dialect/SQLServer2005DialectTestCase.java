@@ -129,6 +129,16 @@ public class SQLServer2005DialectTestCase extends BaseUnitTestCase {
 	}
 
 	@Test
+	@TestForIssue(jiraKey = "HHH-11352")
+	public void testPagingWithColumnNameStartingWithFrom() {
+		final String sql = "select column1 c1, from_column c2 from table1";
+		assertEquals( "WITH query AS (SELECT inner_query.*, ROW_NUMBER() OVER (ORDER BY CURRENT_TIMESTAMP) as __hibernate_row_nr__ FROM ( " +
+				"select column1 c1, from_column c2 from table1 ) inner_query ) " +
+				"SELECT c1, c2 FROM query WHERE __hibernate_row_nr__ >= ? AND __hibernate_row_nr__ < ?",
+				dialect.getLimitHandler().processSql(sql, toRowSelection(3, 5)));
+	}
+
+	@Test
 	@TestForIssue(jiraKey = "HHH-7019")
 	public void testGetLimitStringWithSubselect() {
 		final String subselectInSelectClauseSQL = "select persistent0_.id as col_0_0_, " +
@@ -151,12 +161,12 @@ public class SQLServer2005DialectTestCase extends BaseUnitTestCase {
 	public void testGetLimitStringWithSelectDistinctSubselect() {
 		final String selectDistinctSubselectSQL = "select page0_.CONTENTID as CONTENT1_12_ " +
 				"where page0_.CONTENTTYPE='PAGE' and (page0_.CONTENTID in " +
-				"(select distinct page2_.PREVVER from CONTENT page2_ where (page2_.PREVVER is not null))";
+				"(select distinct page2_.PREVVER from CONTENT page2_ where (page2_.PREVVER is not null)))";
 
 		assertEquals(
 				"select TOP(?) page0_.CONTENTID as CONTENT1_12_ " +
 						"where page0_.CONTENTTYPE='PAGE' and (page0_.CONTENTID in " +
-						"(select distinct page2_.PREVVER from CONTENT page2_ where (page2_.PREVVER is not null))",
+						"(select distinct page2_.PREVVER from CONTENT page2_ where (page2_.PREVVER is not null)))",
 				dialect.getLimitHandler().processSql( selectDistinctSubselectSQL, toRowSelection( 0, 5 ) )
 		);
 	}
@@ -164,14 +174,14 @@ public class SQLServer2005DialectTestCase extends BaseUnitTestCase {
 	@Test
 	@TestForIssue(jiraKey = "HHH-11084")
 	public void testGetLimitStringWithSelectDistinctSubselectNotFirst() {
-		final String selectDistinctSubselectSQL = "select page0_.CONTENTID as CONTENT1_12_ " +
+		final String selectDistinctSubselectSQL = "select page0_.CONTENTID as CONTENT1_12_ FROM CONTEXT page0_ " +
 				"where page0_.CONTENTTYPE='PAGE' and (page0_.CONTENTID in " +
-				"(select distinct page2_.PREVVER from CONTENT page2_ where (page2_.PREVVER is not null))";
+				"(select distinct page2_.PREVVER from CONTENT page2_ where (page2_.PREVVER is not null)))";
 
 		assertEquals(
 				"WITH query AS (SELECT inner_query.*, ROW_NUMBER() OVER (ORDER BY CURRENT_TIMESTAMP) as __hibernate_row_nr__ " +
 				"FROM ( " + selectDistinctSubselectSQL + " ) inner_query ) " +
-				"SELECT page2_.PREVVER FROM query WHERE __hibernate_row_nr__ >= ? AND __hibernate_row_nr__ < ?",
+				"SELECT CONTENT1_12_ FROM query WHERE __hibernate_row_nr__ >= ? AND __hibernate_row_nr__ < ?",
 				dialect.getLimitHandler().processSql( selectDistinctSubselectSQL, toRowSelection( 1, 5 ) )
 		);
 	}
@@ -362,6 +372,31 @@ public class SQLServer2005DialectTestCase extends BaseUnitTestCase {
 				dialect.getLimitHandler().processSql( query, toRowSelection( 1, 5 ) )
 		);
 	}
+
+	@Test
+	@TestForIssue(jiraKey = "HHH-11324")
+	public void testGetLimitStringWithSelectClauseNestedQueryUsingParenthesis() {
+		final String query = "select t1.c1 as col_0_0, (select case when count(t2.c1)>0 then 'ADDED' else 'UNMODIFIED' end from table2 t2 WHERE (t2.c1 in (?))) as col_1_0 from table1 t1 WHERE 1=1 ORDER BY t1.c1 ASC";
+
+		assertEquals(
+				"WITH query AS (SELECT inner_query.*, ROW_NUMBER() OVER (ORDER BY CURRENT_TIMESTAMP) as __hibernate_row_nr__ FROM ( " +
+						"select TOP(?) t1.c1 as col_0_0, (select case when count(t2.c1)>0 then 'ADDED' else 'UNMODIFIED' end from table2 t2 WHERE (t2.c1 in (?))) as col_1_0 from table1 t1 WHERE 1=1 ORDER BY t1.c1 ASC ) inner_query ) " +
+						"SELECT col_0_0, col_1_0 FROM query WHERE __hibernate_row_nr__ >= ? AND __hibernate_row_nr__ < ?",
+				dialect.getLimitHandler().processSql( query, toRowSelection( 1, 5 ) )
+		);
+	}
+
+	@Test
+	@TestForIssue(jiraKey = "HHH-11324")
+	public void testGetLimitStringWithSelectClauseNestedQueryUsingParenthesisOnlyTop() {
+		final String query = "select t1.c1 as col_0_0, (select case when count(t2.c1)>0 then 'ADDED' else 'UNMODIFIED' end from table2 t2 WHERE (t2.c1 in (?))) as col_1_0 from table1 t1 WHERE 1=1 ORDER BY t1.c1 ASC";
+
+		assertEquals(
+				"select TOP(?) t1.c1 as col_0_0, (select case when count(t2.c1)>0 then 'ADDED' else 'UNMODIFIED' end from table2 t2 WHERE (t2.c1 in (?))) as col_1_0 from table1 t1 WHERE 1=1 ORDER BY t1.c1 ASC",
+				dialect.getLimitHandler().processSql( query, toRowSelection( 0, 5 ) )
+		);
+	}
+
 	@Test
 	@TestForIssue(jiraKey = "HHH-9635")
 	public void testAppendLockHintReadPastLocking() {

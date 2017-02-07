@@ -83,15 +83,14 @@ public class TxInvalidationInterceptor extends BaseInvalidationInterceptor {
 
 	@Override
 	public Object visitPutMapCommand(InvocationContext ctx, PutMapCommand command) throws Throwable {
-		Object[] keys = command.getMap() == null ? null : command.getMap().keySet().toArray();
-		return handleInvalidate( ctx, command, keys );
+		return handleInvalidate( ctx, command, command.getMap().keySet().toArray() );
 	}
 
 	@Override
 	public Object visitPrepareCommand(TxInvocationContext ctx, PrepareCommand command) throws Throwable {
 		Object retval = invokeNextInterceptor( ctx, command );
 		log.tracef( "Entering InvalidationInterceptor's prepare phase.  Ctx flags are empty" );
-		// fetch the modifications beforeQuery the transaction is committed (and thus removed from the txTable)
+		// fetch the modifications before the transaction is committed (and thus removed from the txTable)
 		if ( shouldInvokeRemoteTxCommand( ctx ) ) {
 			if ( ctx.getTransaction() == null ) {
 				throw new IllegalStateException( "We must have an associated transaction" );
@@ -221,13 +220,5 @@ public class TxInvalidationInterceptor extends BaseInvalidationInterceptor {
 			command = commandsFactory.buildPrepareCommand( txCtx.getGlobalTransaction(), Collections.<WriteCommand>singletonList( invalidateCommand ), true );
 		}
 		rpcManager.invokeRemotely( getMembers(), command, synchronous ? syncRpcOptions : asyncRpcOptions );
-	}
-
-	private boolean isPutForExternalRead(FlagAffectedCommand command) {
-		if ( command.hasFlag( Flag.PUT_FOR_EXTERNAL_READ ) ) {
-			log.trace( "Put for external read called.  Suppressing clustered invalidation." );
-			return true;
-		}
-		return false;
 	}
 }

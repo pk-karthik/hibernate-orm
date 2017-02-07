@@ -31,6 +31,9 @@ import org.junit.Test;
  * Allows the BaseCoreFunctionalTestCase to create the schema using TestEntity.  The test method validates against an
  * identical entity, but using the synonym name.
  *
+ * When SYNONYM are used, the GROUPED Strategy cannot be applied because when the tableNamePattern was not provided
+ * java.sql.DatabaseMetaData#getColumns(...) Oracle implementation returns only the columns related with the synonym
+ *
  * @author Brett Meyer
  */
 @RequiresDialect(Oracle9iDialect.class)
@@ -79,28 +82,13 @@ public class SynonymValidationTest extends BaseNonConfigCoreFunctionalTestCase {
 	}
 
 	@Test
-	public void testSynonymUsingImprovedSchemaValidar() {
+	public void testSynonymUsingIndividuallySchemaValidator() {
 		ssr = new StandardServiceRegistryBuilder()
 				.applySetting( AvailableSettings.ENABLE_SYNONYMS, "true" )
-				.applySetting( AvailableSettings.HBM2DDL_JDBC_METADATA_EXTRACTOR_STRATEGY, JdbcMetadaAccessStrategy.GROUPED )
-				.build();
-		try {
-			final MetadataSources metadataSources = new MetadataSources( ssr );
-			metadataSources.addAnnotatedClass( TestEntityWithSynonym.class );
-			metadataSources.addAnnotatedClass( TestEntity.class );
-
-			new SchemaValidator().validate( metadataSources.buildMetadata() );
-		}
-		finally {
-			StandardServiceRegistryBuilder.destroy( ssr );
-		}
-	}
-
-	@Test
-	public void testSynonymUsingSchemaValidator() {
-		ssr = new StandardServiceRegistryBuilder()
-				.applySetting( AvailableSettings.ENABLE_SYNONYMS, "true" )
-				.applySetting( AvailableSettings.HBM2DDL_JDBC_METADATA_EXTRACTOR_STRATEGY, JdbcMetadaAccessStrategy.GROUPED )
+				.applySetting(
+						AvailableSettings.HBM2DDL_JDBC_METADATA_EXTRACTOR_STRATEGY,
+						JdbcMetadaAccessStrategy.INDIVIDUALLY
+				)
 				.build();
 		try {
 			final MetadataSources metadataSources = new MetadataSources( ssr );

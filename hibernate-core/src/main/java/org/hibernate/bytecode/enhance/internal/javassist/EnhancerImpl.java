@@ -9,25 +9,22 @@ package org.hibernate.bytecode.enhance.internal.javassist;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 
-import javassist.CannotCompileException;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.LoaderClassPath;
 
+import javassist.NotFoundException;
 import org.hibernate.HibernateException;
 import org.hibernate.bytecode.enhance.spi.EnhancementContext;
 import org.hibernate.bytecode.enhance.spi.EnhancementException;
 import org.hibernate.bytecode.enhance.spi.Enhancer;
 import org.hibernate.bytecode.enhance.spi.EnhancerConstants;
 import org.hibernate.engine.spi.Managed;
-import org.hibernate.engine.spi.ManagedComposite;
-import org.hibernate.engine.spi.ManagedEntity;
-import org.hibernate.engine.spi.ManagedMappedSuperclass;
 import org.hibernate.engine.spi.PersistentAttributeInterceptable;
 import org.hibernate.engine.spi.PersistentAttributeInterceptor;
 import org.hibernate.internal.CoreLogging;
@@ -69,42 +66,31 @@ public class EnhancerImpl implements Enhancer {
 	 */
 	@Override
 	public synchronized byte[] enhance(String className, byte[] originalBytes) throws EnhancementException {
+		CtClass managedCtClass = null;
 		try {
-			final CtClass managedCtClass = classPool.makeClassIfNew( new ByteArrayInputStream( originalBytes ) );
-			if ( enhance( managedCtClass ) ) {
-				return getByteCode( managedCtClass );
-			}
-			else {
-				return null;
-			}
+			managedCtClass = classPool.makeClassIfNew( new ByteArrayInputStream( originalBytes ) );
+			return enhance( managedCtClass ) ? getByteCode( managedCtClass ) : null;
 		}
 		catch (IOException e) {
 			log.unableToBuildEnhancementMetamodel( className );
 			return null;
 		}
-	}
-
-	@Override
-	public byte[] enhance(File javaClassFile) throws EnhancementException, IOException {
-		final CtClass ctClass = classPool.makeClass( new FileInputStream( javaClassFile ) );
-		try {
-			return enhance( ctClass.getName(), ctClass.toBytecode() );
-		}
-		catch (CannotCompileException e) {
-			log.warn( "Unable to enhance class file [" + javaClassFile.getAbsolutePath() + "]", e );
-			return null;
+		finally {
+			if ( managedCtClass != null ) {
+				managedCtClass.detach();
+			}
 		}
 	}
 
-	private ClassPool buildClassPool(final JavassistEnhancementContext enhancementContext) {
-		final ClassPool classPool = new ClassPool( false ) {
+	private ClassPool buildClassPool(JavassistEnhancementContext enhancementContext) {
+		ClassPool classPool = new ClassPool( false ) {
 			@Override
 			public ClassLoader getClassLoader() {
 				return enhancementContext.getLoadingClassLoader();
 			}
 		};
 
-		final ClassLoader loadingClassLoader = enhancementContext.getLoadingClassLoader();
+		ClassLoader loadingClassLoader = enhancementContext.getLoadingClassLoader();
 		if ( loadingClassLoader != null ) {
 			classPool.appendClassPath( new LoaderClassPath( loadingClassLoader ) );
 		}
@@ -114,6 +100,9 @@ public class EnhancerImpl implements Enhancer {
 	protected CtClass loadCtClassFromClass(Class<?> aClass) {
 		String resourceName = aClass.getName().replace( '.', '/' ) + ".class";
 		InputStream resourceAsStream = aClass.getClassLoader().getResourceAsStream( resourceName );
+		if ( resourceAsStream == null ) {
+			throw new UncheckedIOException( new FileNotFoundException ( "Not found: " + resourceName ) );
+		}
 		try {
 			return classPool.makeClass( resourceAsStream );
 		}
@@ -168,32 +157,31 @@ public class EnhancerImpl implements Enhancer {
 		}
 	}
 
+	// See HHH-10977 HHH-11284 HHH-11404 --- check for declaration of Managed interface on the class, not inherited
 	private boolean alreadyEnhanced(CtClass managedCtClass) {
-		if ( !PersistentAttributesHelper.isAssignable( managedCtClass, Managed.class.getName() ) ) {
+		try {
+			for ( CtClass declaredInterface : managedCtClass.getInterfaces() ) {
+				if ( PersistentAttributesHelper.isAssignable( declaredInterface, Managed.class.getName() ) ) {
+					return true;
+				}
+			}
 			return false;
 		}
-		// HHH-10977 - When a mapped superclass gets enhanced before a subclassing entity, the entity does not get enhanced, but it implements the Managed interface
-		return enhancementContext.isEntityClass( managedCtClass ) && PersistentAttributesHelper.isAssignable( managedCtClass, ManagedEntity.class.getName() )
-				|| enhancementContext.isCompositeClass( managedCtClass ) && PersistentAttributesHelper.isAssignable(
-				managedCtClass,
-				ManagedComposite.class.getName()
-		)
-				|| enhancementContext.isMappedSuperclassClass( managedCtClass ) && PersistentAttributesHelper.isAssignable(
-				managedCtClass,
-				ManagedMappedSuperclass.class.getName()
-		);
+		catch ( NotFoundException e ) {
+			throw new HibernateException( "Unable to transform class: " + e.getMessage() , e );
+		}
 	}
 
 	private byte[] getByteCode(CtClass managedCtClass) {
-		final ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-		final DataOutputStream out = new DataOutputStream( byteStream );
+		ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+		DataOutputStream out = new DataOutputStream( byteStream );
 		try {
 			managedCtClass.toBytecode( out );
 			return byteStream.toByteArray();
 		}
 		catch (Exception e) {
 			log.unableToTransformClass( e.getMessage() );
-			throw new HibernateException( "Unable to transform class: " + e.getMessage() );
+			throw new HibernateException( "Unable to transform class: " + e.getMessage() , e );
 		}
 		finally {
 			try {

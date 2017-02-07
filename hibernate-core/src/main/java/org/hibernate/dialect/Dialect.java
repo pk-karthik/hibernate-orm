@@ -229,6 +229,7 @@ public abstract class Dialect implements ConversionContext {
 		registerHibernateType( Types.TIME, StandardBasicTypes.TIME.getName() );
 		registerHibernateType( Types.TIMESTAMP, StandardBasicTypes.TIMESTAMP.getName() );
 		registerHibernateType( Types.VARCHAR, StandardBasicTypes.STRING.getName() );
+		registerHibernateType( Types.NVARCHAR, StandardBasicTypes.NSTRING.getName() );
 		registerHibernateType( Types.VARBINARY, StandardBasicTypes.BINARY.getName() );
 		registerHibernateType( Types.LONGVARCHAR, StandardBasicTypes.TEXT.getName() );
 		registerHibernateType( Types.LONGVARBINARY, StandardBasicTypes.IMAGE.getName() );
@@ -2862,6 +2863,24 @@ public abstract class Dialect implements ConversionContext {
 	 */
 	public boolean supportsNationalizedTypes() {
 		return true;
+	}
+
+	/**
+	 * Does this dialect/database support non-query statements (e.g. INSERT, UPDATE, DELETE) with CTE (Common Table Expressions)?
+	 *
+	 * @return {@code true} if non-query statements are supported with CTE
+	 */
+	public boolean supportsNonQueryWithCTE() {
+		return false;
+	}
+
+	/**
+	 * Does this dialect/database support VALUES list (e.g. VALUES (1), (2), (3) )
+	 *
+	 * @return {@code true} if VALUES list are supported
+	 */
+	public boolean supportsValuesList() {
+		return false;
 	}
 
 	public boolean isLegacyLimitHandlerBehaviorEnabled() {

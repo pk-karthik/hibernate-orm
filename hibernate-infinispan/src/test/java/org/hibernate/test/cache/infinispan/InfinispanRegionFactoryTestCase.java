@@ -6,6 +6,7 @@
  */
 package org.hibernate.test.cache.infinispan;
 
+import java.io.InputStream;
 import java.util.Properties;
 import java.util.function.BiConsumer;
 import javax.transaction.TransactionManager;
@@ -28,6 +29,9 @@ import org.hibernate.service.ServiceRegistry;
 import org.hibernate.testing.ServiceRegistryBuilder;
 import org.hibernate.test.cache.infinispan.util.CacheTestUtil;
 import org.hibernate.test.cache.infinispan.util.InfinispanTestingSetup;
+import org.infinispan.commons.util.FileLookupFactory;
+import org.infinispan.configuration.parsing.ConfigurationBuilderHolder;
+import org.infinispan.configuration.parsing.ParserRegistry;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -306,7 +310,9 @@ public class InfinispanRegionFactoryTestCase  {
 	public void testTimestampValidation() {
 		final String timestamps = "org.hibernate.cache.spi.UpdateTimestampsCache";
 		Properties p = createProperties();
-		final DefaultCacheManager manager = new DefaultCacheManager(GlobalConfigurationBuilder.defaultClusteredBuilder().build());
+      InputStream configStream = FileLookupFactory.newInstance().lookupFile(InfinispanRegionFactory.DEF_INFINISPAN_CONFIG_RESOURCE, getClass().getClassLoader());
+      ConfigurationBuilderHolder cbh = new ParserRegistry().parse(configStream);
+      DefaultCacheManager manager = new DefaultCacheManager(cbh, true);
 		ConfigurationBuilder builder = new ConfigurationBuilder();
 		builder.clustering().cacheMode(CacheMode.INVALIDATION_SYNC);
 		manager.defineConfiguration( DEF_TIMESTAMPS_RESOURCE, builder.build() );
@@ -646,7 +652,7 @@ public class InfinispanRegionFactoryTestCase  {
 			else
 				m = super.createCacheManager(properties, serviceRegistry);
 			// since data type cache configuration templates are defined when cache manager is created,
-			// we have to use hooks and set the configuration beforeQuery the whole factory starts
+			// we have to use hooks and set the configuration before the whole factory starts
 			if (afterCacheManagerCreated != null) {
 				afterCacheManagerCreated.accept(this, m);
 			}

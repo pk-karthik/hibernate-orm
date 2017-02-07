@@ -20,7 +20,6 @@ import org.hibernate.StaleStateException;
 import org.hibernate.cache.infinispan.impl.BaseTransactionalDataRegion;
 import org.hibernate.cache.infinispan.util.Caches;
 import org.hibernate.cache.infinispan.util.VersionedEntry;
-import org.hibernate.cache.spi.entry.CacheEntry;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 
 import org.hibernate.test.cache.infinispan.functional.entities.Item;
@@ -45,7 +44,7 @@ import static org.junit.Assert.assertTrue;
  * Tests specific to versioned entries -based caches.
  * Similar to {@link TombstoneTest} but some cases have been removed since
  * we are modifying the cache only once, therefore some sequences of operations
- * would fail beforeQuery touching the cache.
+ * would fail before touching the cache.
  *
  * @author Radim Vansa &lt;rvansa@redhat.com&gt;
  */
@@ -338,19 +337,5 @@ public class VersionedTest extends AbstractNonInvalidationTest {
       value = contents.get(itemId);
       assertEquals(VersionedEntry.class, value.getClass());
       assertNull(((VersionedEntry) value).getValue());
-   }
-
-   protected void assertEmptyCache() {
-      assertNull(entityCache.get(itemId)); // force expiration
-      Map contents = Caches.entrySet(entityCache).toMap();
-      assertEquals(Collections.EMPTY_MAP, contents);
-   }
-
-   protected Object assertSingleCacheEntry() {
-      Map contents = Caches.entrySet(entityCache).toMap();
-      assertEquals(1, contents.size());
-      Object value = contents.get(itemId);
-      assertTrue(contents.toString(), value instanceof CacheEntry);
-      return value;
    }
 }

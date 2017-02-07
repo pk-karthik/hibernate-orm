@@ -12,7 +12,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Properties;
 import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.persistence.AttributeConverter;
@@ -22,8 +24,6 @@ import javax.persistence.PersistenceException;
 import javax.persistence.spi.PersistenceUnitTransactionType;
 import javax.sql.DataSource;
 
-import javassist.CtClass;
-import javassist.CtField;
 
 import org.hibernate.SessionFactory;
 import org.hibernate.SessionFactoryObserver;
@@ -43,6 +43,7 @@ import org.hibernate.boot.registry.BootstrapServiceRegistry;
 import org.hibernate.boot.registry.BootstrapServiceRegistryBuilder;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.boot.registry.classloading.internal.TcclLookupPrecedence;
 import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
 import org.hibernate.boot.registry.selector.StrategyRegistrationProvider;
 import org.hibernate.boot.registry.selector.spi.StrategySelector;
@@ -388,6 +389,15 @@ public class EntityManagerFactoryBuilderImpl implements EntityManagerFactoryBuil
 				}
 				else if ( ClassLoader.class.isInstance( classLoadersSetting ) ) {
 					bsrBuilder.applyClassLoader( (ClassLoader) classLoadersSetting );
+				}
+			}
+                        
+			//configurationValues not assigned yet, using directly the properties of the PU
+			Properties puProperties = persistenceUnit.getProperties();
+			if( puProperties != null ) {
+				final String tcclLookupPrecedence = puProperties.getProperty( org.hibernate.cfg.AvailableSettings.TC_CLASSLOADER );
+				if( tcclLookupPrecedence != null ) {
+					bsrBuilder.applyTcclLookupPrecedence( TcclLookupPrecedence.valueOf( tcclLookupPrecedence.toUpperCase( Locale.ROOT ) ) );
 				}
 			}
 		}

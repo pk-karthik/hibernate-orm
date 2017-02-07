@@ -1,7 +1,171 @@
-Hibernate 5.0 Changelog
+Hibernate 5 Changelog
 =======================
 
 Note: Please refer to JIRA to learn more about each issue.
+
+
+Changes in 5.2.7.Final (January 19, 2017)
+------------------------------------------------------------------------------------------------------------------------
+https://hibernate.atlassian.net/projects/HHH/versions/26401
+
+** Bug
+    * [HHH-4712] - Field named "id" (but not an @Id) in a class referenced via join table leads to "Column 'col_1_1_' not found" when retrieving old versions
+    * [HHH-8973] - support auditing revised properties on detatched objects
+    * [HHH-9108] - Envers with Embeddable having a collection of other entities results in PropertyAccessException: IllegalArgumentException
+    * [HHH-9834] - Audit table creation fails for ElementCollection Map with CLOB/NCLOB element column
+    * [HHH-10183] - Mapping for NVARCHAR in SqlServer not working with native queries; org.hibernate.MappingException: No Dialect mapping for JDBC type: -9
+    * [HHH-10561] - Join on treated root not rendered in HQL
+    * [HHH-11134] - StringIndexOutOfBoundsException in BooleanTypeDescriptor
+    * [HHH-11173] - Bytecode enhanced lazy collection won't load from cache
+    * [HHH-11202] - IllegalAccessException on Embeddable ID after serializing Getter in cache key
+    * [HHH-11236] - JPA hbm2ddl auto-generation creates ddl with invalid syntax for Unique Key with any MySQLDialect
+    * [HHH-11242] - Unable to enhance property from MappedSuperclass: class is frozen
+    * [HHH-11284] - Enhancer dirty tracking doesn't work with inherited entities
+    * [HHH-11309] - Cannot install Hibernate feature into Karaf 4.0.7
+    * [HHH-11323] - Evict during concurrent update and putFromLoad can result in stale entry in 2LC
+    * [HHH-11350] - Intermittent failure in testEvictAll/testRemoveAll
+    * [HHH-11352] - Hibernate & Paging: BROKEN when a column contains the word "FROM" for SQL Server
+    * [HHH-11364] - Unable to populate an ElementCollection (of an embeddable type) of an audited entity when the collection has a null value for a property with JoinColumn
+    * [HHH-11369] - gradle tasks fail to list
+    * [HHH-11375] - SINGLE_TABLE  associated entity query missing restriction of DiscriminatorColumn
+    * [HHH-11376] - Malformed SQL query sent to SQL Server with left outer join and pessimistic lock
+    * [HHH-11383] - Envers Query API: Cannot traverse relation of superclass with table-per-subclass mapping
+    * [HHH-11393] - Hibernate/JPA CriteriaQuery trim function generate wrong SQL for PostgreSQL
+    * [HHH-11394] - Custom WildFly modules include a duplicate dependency on Javassist
+    * [HHH-11400] - HHH90000016: Found use of deprecated 'collection property' issue for valid JPQL query
+    * [HHH-11401] - Subquery join rewrite produces wrong SQL in some cases
+    * [HHH-11404] - ManagedSuperclass not enhanced when extending another ManagedSuperclass
+    * [HHH-11407] - JPA + JDBC transaction - when a commit fails rollback is executed twice
+
+** Task
+    * [HHH-11382] - Upgrade WildFly version used for integration tests to 10.1.0.Final
+
+** Improvement
+    * [HHH-10858] - Could not find matching type descriptor for requested Java class [...]; using fallback
+    * [HHH-11339] - PutFromLoads in replicated/distributed caches should propagate asynchronously
+    * [HHH-11344] - Reduce execution time of hibernate-infinispan testsuite
+    * [HHH-11370] - Consider making javax.enterprise:cdi-api dependency "provided"
+    * [HHH-11377] - ReflectHelper#getConstantValue should consider digits as well
+    * [HHH-11388] - Fix documentation typos spotted by FabioUeno
+    * [HHH-11389] - Upgrade Byte Buddy to 1.6.0
+    * [HHH-11395] - ServiceRegistry#getService(...) throws NPE when service initiator returns null
+    * [HHH-11408] - Fixing typos in documentation
+
+
+Changes in 5.2.6.Final (December 20, 2016)
+------------------------------------------------------------------------------------------------------------------------
+https://hibernate.atlassian.net/projects/HHH/versions/26100
+
+** Bug
+    * [HHH-4313] - ConcurrentModificationException when collection of embeddable contains a collection
+    * [HHH-7940] - NullPointerException with indexed Collections
+    * [HHH-7949] - Mapping of modified flags for bidirectional association causes lazy loading of collections
+    * [HHH-10465] - Loss of precision in temporal JavaTypeDescriptor implementations
+    * [HHH-10623] - Persist of detached entity in derived ID
+    * [HHH-11183] - Mixed line endings in schema creation script
+    * [HHH-11241] - Missing column when executing HQL and criteria query with secondary table
+    * [HHH-11257] - Connection leak when SQLGrammarException is thrown
+    * [HHH-11274] - EntityManagerFactoryImpl.getIdentifier uses deprecated version of getIdentifier
+    * [HHH-11277] - SQLServerDialect does not adhere to supportsVariableLimit setting
+    * [HHH-11278] - setMaxResult(0) should return an empty List
+    * [HHH-11287] - requiresDependencyResolution must bet set in plugin.xml to include maven dependencies in enhancement classpath
+    * [HHH-11288] - Execution project artifacts are always empty, so dependencies are never included
+    * [HHH-11289] - Lazy-initializing a static Method and making accessible not thread-safe
+    * [HHH-11293] - Use of enhancer dirty tracking causes collections in entities to not be persisted
+    * [HHH-11294] - NPE in org.hibernate.jpa.internal.util.PersistenceUtilHelper.isInitialized(PersistentAttributeInterceptable)
+    * [HHH-11296] - Incorrect handling of NCLOB streaming
+    * [HHH-11304] - Invalidations are not cleared when transaction rolls back
+    * [HHH-11305] - @OneToOne association, Nullable check does is not skipped for @NotFound(action = NotFoundAction.IGNORE)
+    * [HHH-11314] - BasicHibernateAnnotationsTest.testInheritFiltersFromMappedSuperclass fails on MS SQL Server
+    * [HHH-11315] - EnhancerTest fails on Oracle databases
+    * [HHH-11316] - EnhancerTest fails on Oracle databases
+    * [HHH-11324] - SQLServer2005LimitHandler uncapable of handle subquery in column list
+    * [HHH-11328] - Persist of transient entity in derived ID that is already in merge process throws javax.persistence.EntityExistsException
+    * [HHH-11329] - Too long identifiers in tests in org.hibernate.test.inheritancediscriminator.embeddable package
+    * [HHH-11330] - Skip IdentifierGeneratorWithNaturalIdCacheTest on dialects that do not support identity columns
+    * [HHH-11331] - SQLLoaderTest fails on DB2
+    * [HHH-11332] - QueryAndSQLTest and QueryTest failing on Sybase because null == null
+    * [HHH-11335] - ByteArrayIdTest and PrimitiveByteArrayIdTest failing on Oracle DBs
+    * [HHH-11337] - Incorrect SQL generated when use both left join with unrelated entity and implicit join to another entity in select-clause
+    * [HHH-11340] - Joins on Entity Joins are not rendered into SQL
+
+** Improvement
+    * [HHH-4959] - Concurrent HQL parsing blocks on ReflectHelper.classForName()
+    * [HHH-11265] - JCacheRegionFactory should allow for subclasses to specify CacheManager
+    * [HHH-11295] - Some improvements to EntityJoinTest
+    * [HHH-11307] - When .class cannot be loaded, throw a sensible exception instead of NPE
+    * [HHH-11308] - Bump c3p0 version up to support JDBC 4.2
+    * [HHH-11317] - Several typos and style fixes in documentation
+    * [HHH-11318] - Fix Infinispan Javadoc documentation typos
+    * [HHH-11319] - The dirtyPropertyNames content is NOT logged properly
+    * [HHH-11320] - Disable EntityRegionAccessStrategyTest#testContestedPutFromLoad because of short timeout
+    * [HHH-11321] - ByteBuddy Enhancer throws java.lang.IllegalStateException: Cannot resolve type description for certain classes
+    * [HHH-11338] - Apply HHH-11194 fix to Dialect subclasses
+    * [HHH-11346] - Upgrade gradle to 3.2.1 + Upgrade build scan plugin to 1.3
+
+
+Changes in 5.2.5.Final (November 24, 2016)
+------------------------------------------------------------------------------------------------------------------------
+https://hibernate.atlassian.net/projects/HHH/versions/25600
+
+** Sub-task
+    * [HHH-2705] - optimistic-lock = "dirty" does not support detached objects
+
+** Bug
+    * [HHH-5467] - API documentation for @Fetch(SUBSELECT) is ambiguous.
+    * [HHH-6941] - Erroneous Javadoc for getReferencedProperty, getReferenceablePropertyIterator
+    * [HHH-9816] - Document exclude-unlisted-classes and hibernate.archive.autodetection in the manual
+    * [HHH-11083] - WrongClassException using Infinispan and sharing cache regions
+    * [HHH-11155] - Lazy properties are not updated if not all lazy properties (e.g. collections) are initialized
+    * [HHH-11194] - [Regression] SQLServerDialect no longer supports setFirstResult(n)
+    * [HHH-11197] - Hibernate Spatial cannot parse WKT from PostGIS
+    * [HHH-11205] - char is not treated as nationalized character
+    * [HHH-11214] - ValidityAuditStrategy not audit properly nested collection with nulls
+    * [HHH-11215] - NullPointerException when reading an audited entity that has a collection of embeddables with a ManyToOne to an unaudited entity.
+    * [HHH-11216] - @ElementCollection for enumerations is failing when enabling insert ordering
+    * [HHH-11217] - SessionImpl.refresh() throws IllegalArgumentException, "not an Entity" when using custom entity name
+    * [HHH-11226] - Hibernate cache throws NullPointerException during wildfly app server startup
+    * [HHH-11230] - Aggregate on (mappedBy) joined column produces invalid query
+    * [HHH-11232] - Session closed exception when using Envers in a JTA transaction
+    * [HHH-11248] - Warn user when multiple persistence-units use the same name
+    * [HHH-11250] - NPE occurs when using filters whose name contains a dot
+    * [HHH-11254] - Timestamps cache fails validation if eviction strategy = MANUAL
+    * [HHH-11258] - Using nested order by in a function context produces wrong sql
+    * [HHH-11267] - hibernate-infinispan testsuite is broken
+    * [HHH-11269] -  JPA & JTA - Error during managed flush [Session/EntityManager is closed] on flush-time cascades
+
+** New Feature
+    * [HHH-3674] - Expose SchemaUpdate#haltOnError as a configuration property
+
+** Task
+    * [HHH-7424] - document HHH-2576
+    * [HHH-11238] - Upgrade JBoss Logging Tools to 2.0.1.Final
+    * [HHH-11239] - Upgrade Jandex to version 2.0.3.Final
+    * [HHH-11240] - Upgrade Infinispan to version 8.2.4.Final
+    * [HHH-11268] - Changes required after upgrading to Infinispan to 8.2
+    * [HHH-11270] - Upgrade to Infinispan 8.2.5.Final
+    * [HHH-11271] - Fix hidden failure in InfinispanRegionFactoryTestCase#testTimestampValidation
+
+** Improvement
+    * [HHH-476] - Event System documentation
+    * [HHH-4465] - Document @Entity.name != Hibernate entity name
+    * [HHH-10127] - Allow indication that converted types are immutable
+    * [HHH-10211] - Create Postgis9Dialect, Postgis92Dialect and Postgis94Dialect
+    * [HHH-11034] - Query.stream() Javadoc should specify whether the resulting Stream contains resources
+    * [HHH-11152] - ByteBuddy BytecodeProvider
+    * [HHH-11204] - Fix typo for all "occured" error message to occurred
+    * [HHH-11206] - Document all configurations that are not present in AvailableSettings
+    * [HHH-11220] - Auto-detect SQL Server 2016 when the major version is 13
+    * [HHH-11221] - Add more authors to the User Guide header
+    * [HHH-11225] - Add CriteriaBuilder overloads for methods dealing with Collection to also deal with Map
+    * [HHH-11233] - JPA SQL function with no arguments can only be called if we provide a comma
+    * [HHH-11235] - split checkstyles into fatal and non-fatal configs
+    * [HHH-11245] - Usage of a closed Thread Context ClassLoader
+    * [HHH-11255] - @NaturalId mapping fails when using a composite natural identifier
+
+** Patch
+    * [HHH-2123] - clarification on the way interceptors and event system interact.
+
 
 Changes in 5.2.4.Final (October 26, 2016)
 ------------------------------------------------------------------------------------------------------------------------

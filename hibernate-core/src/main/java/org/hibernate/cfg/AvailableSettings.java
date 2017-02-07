@@ -7,6 +7,7 @@
 package org.hibernate.cfg;
 
 import org.hibernate.boot.MetadataBuilder;
+import org.hibernate.boot.registry.classloading.internal.TcclLookupPrecedence;
 import org.hibernate.query.internal.ParameterMetadataImpl;
 import org.hibernate.resource.transaction.spi.TransactionCoordinator;
 import org.hibernate.resource.transaction.spi.TransactionCoordinatorBuilder;
@@ -190,6 +191,14 @@ public interface AvailableSettings {
 	 */
 	String CLASSLOADERS = "hibernate.classLoaders";
 
+	/**
+	 * Used to define how the current thread context {@link ClassLoader} must be used
+	 * for class lookup.
+	 * 
+	 * @see TcclLookupPrecedence
+	 */
+	String TC_CLASSLOADER = "hibernate.classLoader.tccl_lookup_precedence";
+        
 	/**
 	 * Names the {@link ClassLoader} used to load user application classes.
 	 * @since 4.0
@@ -791,6 +800,17 @@ public interface AvailableSettings {
 	 * Mainly intended for test environments.
 	 */
 	String QUERY_STARTUP_CHECKING = "hibernate.query.startup_check";
+
+	/**
+	 * Setting which indicates whether or not Java constant follow the Java Naming conventions.
+	 * <p/>
+	 * Default is {@code true}. Existing applications may want to disable this (set it {@code false}) if non-conventional Java constants are used.
+	 * However, there is a significant performance overhead for using non-conventional Java constants since Hibernate cannot determine if aliases
+	 * should be treated as Java constants or not.
+	 *
+	 * @since 5.2
+	 */
+	String CONVENTIONAL_JAVA_CONSTANTS = "hibernate.query.conventional_java_constants";
 
 	/**
 	 * The {@link org.hibernate.exception.spi.SQLExceptionConverter} to use for converting SQLExceptions

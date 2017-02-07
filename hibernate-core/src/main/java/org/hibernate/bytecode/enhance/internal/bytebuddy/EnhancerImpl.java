@@ -6,10 +6,6 @@
  */
 package org.hibernate.bytecode.enhance.internal.bytebuddy;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -61,10 +57,8 @@ import net.bytebuddy.implementation.FixedValue;
 import net.bytebuddy.implementation.Implementation;
 import net.bytebuddy.implementation.StubMethod;
 import net.bytebuddy.pool.TypePool;
-import net.bytebuddy.utility.StreamDrainer;
 
 import static net.bytebuddy.matcher.ElementMatchers.isGetter;
-import static net.bytebuddy.matcher.ElementMatchers.named;
 
 public class EnhancerImpl implements Enhancer {
 
@@ -115,18 +109,6 @@ public class EnhancerImpl implements Enhancer {
 			e.printStackTrace();
 			log.unableToBuildEnhancementMetamodel( className );
 			return null;
-		}
-	}
-
-	@Override
-	public byte[] enhance(File javaClassFile) throws EnhancementException, IOException {
-		String name = javaClassFile.getName().substring( 0, javaClassFile.getName().length() - ".class".length() );
-		InputStream inputStream = new FileInputStream( javaClassFile );
-		try {
-			return enhance( name, StreamDrainer.DEFAULT.drain( inputStream ) );
-		}
-		finally {
-			inputStream.close();
 		}
 	}
 
@@ -292,6 +274,8 @@ public class EnhancerImpl implements Enhancer {
 		}
 		else if ( enhancementContext.isMappedSuperclassClass( managedCtClass ) ) {
 			log.infof( "Enhancing [%s] as MappedSuperclass", managedCtClass.getName() );
+
+			builder = builder.implement( ManagedMappedSuperclass.class );
 			return transformer.applyTo( builder, true );
 		}
 		else if ( enhancementContext.doExtendedEnhancement( managedCtClass ) ) {
@@ -304,14 +288,14 @@ public class EnhancerImpl implements Enhancer {
 		}
 	}
 
+	// See HHH-10977 HHH-11284 HHH-11404 --- check for declaration of Managed interface on the class, not inherited
 	private boolean alreadyEnhanced(TypeDescription managedCtClass) {
-		if ( !managedCtClass.isAssignableTo( Managed.class ) ) {
-			return false;
+		for ( TypeDescription.Generic declaredInterface : managedCtClass.getInterfaces() ) {
+			if ( declaredInterface.asErasure().isAssignableTo( Managed.class ) ) {
+				return true;
+			}
 		}
-		// HHH-10977 - When a mapped superclass gets enhanced before a subclassing entity, the entity does not get enhanced, but it implements the Managed interface
-		return enhancementContext.isEntityClass( managedCtClass ) && managedCtClass.isAssignableTo( ManagedEntity.class )
-				|| enhancementContext.isCompositeClass( managedCtClass ) && managedCtClass.isAssignableTo( ManagedComposite.class )
-				|| enhancementContext.isMappedSuperclassClass( managedCtClass ) && managedCtClass.isAssignableTo( ManagedMappedSuperclass.class );
+		return false;
 	}
 
 	private DynamicType.Builder<?> addInterceptorHandling(DynamicType.Builder<?> builder, TypeDescription managedCtClass) {
